@@ -1,0 +1,42 @@
+suite: example horizontal pod autoscaler tests
+release:
+    name: release-name
+tests:
+    - it: should render release-name-example horizontal pod autoscaler object
+      template: hpa.yaml
+      set:
+          autoscaling:
+              enabled: true
+      documentSelector:
+          path: $[?(@.kind == "HorizontalPodAutoscaler")].metadata.name
+          value: release-name-example
+      asserts:
+          - isKind:
+                of: HorizontalPodAutoscaler
+          - equal:
+                path: spec.maxReplicas
+                value: 100
+          - equal:
+                path: spec.minReplicas
+                value: 1
+          - equal:
+                path: spec.scaleTargetRef.apiVersion
+                value: apps/v1
+          - equal:
+                path: spec.scaleTargetRef.kind
+                value: Deployment
+          - equal:
+                path: spec.scaleTargetRef.name
+                value: release-name-example
+          - equal:
+                path: spec.metrics[0].type
+                value: Resource
+          - equal:
+                path: spec.metrics[0].resource.name
+                value: cpu
+          - equal:
+                path: spec.metrics[0].resource.target.type
+                value: Utilization
+          - equal:
+                path: spec.metrics[0].resource.target.averageUtilization
+                value: 80

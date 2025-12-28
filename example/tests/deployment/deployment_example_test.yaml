@@ -1,0 +1,46 @@
+suite: example deployment tests
+release:
+      name: release-name
+tests:
+      - it: should render release-name-example deployment object
+        template: deployment.yaml
+        documentSelector:
+              path: $[?(@.kind == "Deployment")].metadata.name
+              value: release-name-example
+        asserts:
+              - isKind:
+                      of: Deployment
+              # Container 0
+              - equal:
+                      path: spec.template.spec.containers[0].name
+                      value: example
+              - equal:
+                      path: spec.template.spec.containers[0].image
+                      value: nginx:1.16.0
+              - equal:
+                      path: spec.template.spec.containers[0].imagePullPolicy
+                      value: IfNotPresent
+              # LivenessProbe
+              - equal:
+                      path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+                      value: http
+              - equal:
+                      path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+                      value: /
+              # ReadinessProbe
+              - equal:
+                      path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+                      value: http
+              - equal:
+                      path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+                      value: /
+              # Ports
+              - equal:
+                      path: spec.template.spec.containers[0].ports[0].name
+                      value: http
+              - equal:
+                      path: spec.template.spec.containers[0].ports[0].containerPort
+                      value: 80
+              - equal:
+                      path: spec.template.spec.containers[0].ports[0].protocol
+                      value: TCP

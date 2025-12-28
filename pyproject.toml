@@ -1,0 +1,11 @@
+[project]
+name = "helm-unittest-mcp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "mcp[cli]>=1.25.0",
+    "pyyaml>=6.0.3",
+    "requests>=2.32.5",
+]
