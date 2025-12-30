@@ -8,6 +8,7 @@ TestFormat = Literal["junit", "xunit", "nunit"]
 
 
 class TestResultParser(object):
+    __test__ = False
     def __init__(self, report_type: TestFormat):
         self.report_type = report_type
     

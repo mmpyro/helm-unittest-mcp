@@ -4,6 +4,7 @@ from typing import Any
 
 @dataclass
 class TestFile:
+    __test__ = False
     suite: str
     tests: list[str]
     release: dict[str, Any]
@@ -26,6 +27,7 @@ class ValidationResult:
 
 @dataclass
 class TestCaseResult:
+    __test__ = False
     """Individual test case result.
     
     Attributes:
@@ -44,6 +46,7 @@ class TestCaseResult:
 
 @dataclass
 class TestResultSummary:
+    __test__ = False
     """Summary of test execution results.
     
     Attributes:
