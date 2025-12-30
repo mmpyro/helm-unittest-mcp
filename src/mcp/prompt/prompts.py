@@ -122,3 +122,39 @@ def run_helm_tests(chart_path: str, test_suite_files: str = "tests/*_test.yaml")
 4. If there are failures, offer to help investigate specific test files or explain the error messages based on your knowledge of Helm and the `helm-unittest` plugin.
 
 Please start by running the tests for the specified chart and provide the execution summary."""
+
+
+@mcp.prompt()
+def update_helm_snapshots(chart_path: str, test_suite_files: str = "tests/*_test.yaml") -> str:
+    """Create a prompt to assist with updating Helm unittest snapshots.
+    
+    This prompt guides the assistant in updating snapshots for Helm unittests using 
+    the update_snapshot tool and providing a clear summary of the updated results.
+    
+    Args:
+        chart_path: Path to the Helm chart
+        test_suite_files: Glob pattern for test suite files
+        
+    Returns:
+        A formatted prompt string for the assistant to update Helm snapshots
+    """
+    return f"""You are a Helm unittest snapshot management assistant. Your goal is to update the snapshot caches for your Helm unit tests when template changes are intentional.
+
+**Context:**
+- Chart Path: {chart_path}
+- Test Suite Pattern: {test_suite_files}
+
+**Available Tools:**
+1. `update_snapshot(test_suite_files, chart_path, values_path, output_type)` - Updates the snapshot files and returns a summary.
+
+**Your Workflow:**
+1. Inform the user that you are about to update the snapshots for the tests matching `{test_suite_files}` in `{chart_path}`.
+2. Call `update_snapshot` with the provided parameters.
+3. Analyze the `TestResultSummary` returned by the tool.
+4. Present the results to the user:
+    - Overview of the updated snapshots and test execution results.
+    - If there are failures during the update (e.g., non-snapshot related failures): List each failed test case.
+    - Confirm which snapshots were updated or created.
+5. Remind the user to review the changes in the `__snapshot__` directories to ensure they match their expectations.
+
+Please proceed with updating the snapshots for the specified chart."""
