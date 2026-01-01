@@ -20,6 +20,7 @@ build/
 htmlcov/
 report.xml
 coverage.xml
+test-results.xml
 
 # Helm
 charts/

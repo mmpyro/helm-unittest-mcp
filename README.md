@@ -52,6 +52,12 @@ For convenience, a `Makefile` is provided with common tasks:
   make test-integration  # Run integration tests only
   make test-all          # Run all tests
   ```
+- **Quality Checks**:
+  ```bash
+  make lint              # Run flake8 linting
+  make typecheck         # Run mypy type checking
+  make check             # Run both linting and type checking
+  ```
 - **Local Development**:
   ```bash
   make dev               # Start server in development mode

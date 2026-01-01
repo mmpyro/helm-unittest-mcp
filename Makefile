@@ -22,7 +22,7 @@ unittest:
 	uv run pytest -m "not integration"
 
 test-all:
-	uv run pytest --cov=src --cov-report=term-missing --cov-report=xml
+	uv run pytest --cov=src --cov-report=term-missing --cov-report=xml --junit-xml=test-results.xml
 
 test-integration:
 	uv run pytest -m integration
