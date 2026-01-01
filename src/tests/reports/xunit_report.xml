@@ -1,0 +1,50 @@
+<assemblies>
+	<assembly name="example/tests/deployment/deployment_example_test.yaml" config-file="example/tests/deployment/deployment_example_test.yaml" test-framework="helm-unittest" run-date="2026-01-01" run-time="11:39:50" time="0.004" total="1" passed="1" failed="0" skipped="0" errors="0">
+		<environment>go1.24.11.darwin-arm64</environment>
+		<errors></errors>
+		<collection name="example deployment tests" time="0.004" total="1" passed="1" failed="0" skipped="0">
+			<test name="should render release-name-example deployment object" type="example deployment tests" method="Helm-Validation" time="0.004" result="Pass">
+				<traits></traits>
+			</test>
+		</collection>
+	</assembly>
+	<assembly name="example/tests/horizontalpodautoscaler/horizontalpodautoscaler_example_test.yaml" config-file="example/tests/horizontalpodautoscaler/horizontalpodautoscaler_example_test.yaml" test-framework="helm-unittest" run-date="2026-01-01" run-time="11:39:50" time="0.002" total="1" passed="1" failed="0" skipped="0" errors="0">
+		<environment>go1.24.11.darwin-arm64</environment>
+		<errors></errors>
+		<collection name="example horizontal pod autoscaler tests" time="0.002" total="1" passed="1" failed="0" skipped="0">
+			<test name="should render release-name-example horizontal pod autoscaler object" type="example horizontal pod autoscaler tests" method="Helm-Validation" time="0.002" result="Pass">
+				<traits></traits>
+			</test>
+		</collection>
+	</assembly>
+	<assembly name="example/tests/ingress/ingress_example_test.yaml" config-file="example/tests/ingress/ingress_example_test.yaml" test-framework="helm-unittest" run-date="2026-01-01" run-time="11:39:50" time="0.002" total="1" passed="1" failed="0" skipped="0" errors="0">
+		<environment>go1.24.11.darwin-arm64</environment>
+		<errors></errors>
+		<collection name="example ingress tests" time="0.002" total="1" passed="1" failed="0" skipped="0">
+			<test name="should render release-name-example ingress object" type="example ingress tests" method="Helm-Validation" time="0.002" result="Pass">
+				<traits></traits>
+			</test>
+		</collection>
+	</assembly>
+	<assembly name="example/tests/service/service_example_test.yaml" config-file="example/tests/service/service_example_test.yaml" test-framework="helm-unittest" run-date="2026-01-01" run-time="11:39:50" time="0.002" total="1" passed="1" failed="0" skipped="0" errors="0">
+		<environment>go1.24.11.darwin-arm64</environment>
+		<errors></errors>
+		<collection name="example service tests" time="0.002" total="1" passed="1" failed="0" skipped="0">
+			<test name="should render release-name-example service object" type="example service tests" method="Helm-Validation" time="0.002" result="Pass">
+				<traits></traits>
+			</test>
+		</collection>
+	</assembly>
+	<assembly name="example/tests/serviceaccount/serviceaccount_example_test.yaml" config-file="example/tests/serviceaccount/serviceaccount_example_test.yaml" test-framework="helm-unittest" run-date="2026-01-01" run-time="11:39:50" time="0.002" total="2" passed="2" failed="0" skipped="0" errors="0">
+		<environment>go1.24.11.darwin-arm64</environment>
+		<errors></errors>
+		<collection name="example service account tests" time="0.002" total="2" passed="2" failed="0" skipped="0">
+			<test name="should render release-name-example service account object" type="example service account tests" method="Helm-Validation" time="0.001" result="Pass">
+				<traits></traits>
+			</test>
+			<test name="should use release-name-example service account into deployment" type="example service account tests" method="Helm-Validation" time="0.001" result="Pass">
+				<traits></traits>
+			</test>
+		</collection>
+	</assembly>
+</assemblies>
