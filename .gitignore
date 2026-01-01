@@ -19,6 +19,7 @@ build/
 .coverage
 htmlcov/
 report.xml
+coverage.xml
 
 # Helm
 charts/

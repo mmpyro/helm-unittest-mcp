@@ -7,21 +7,22 @@ mcp = Server().mcp
 @mcp.prompt()
 def helm_unittest_assistant(test_directory: str, pattern: str = "") -> str:
     """Create a prompt to assist with analyzing Helm unittest files.
-    
+
     This prompt helps users work with Helm unittest test files by providing
-    context and guidance on how to use the available tools (get_tests and 
+    context and guidance on how to use the available tools (get_tests and
     get_test_from_file) to analyze test suites.
-    
+
     Args:
         test_directory: Path to the directory containing Helm unittest files
-        pattern: Optional regex pattern to filter test files. If empty, 
+        pattern: Optional regex pattern to filter test files. If empty,
                 matches all .yaml files
-    
+
     Returns:
         A formatted prompt string to guide the assistant in analyzing Helm tests
     """
+
     pattern_info = f"using pattern: '{pattern}'" if pattern else "for all .yaml files"
-    
+
     return f"""You are a Helm unittest expert assistant. Your task is to help analyze and work with Helm unittest test files.
 
 **Context:**
@@ -52,19 +53,20 @@ Please start by analyzing the test files in the specified directory and provide 
 @mcp.prompt()
 def validate_helm_tests(test_directory: str, pattern: str = "") -> str:
     """Create a prompt to assist with validating Helm unittest schema.
-    
+
     This prompt helps users ensure their Helm unittest test files follow the official
     JSON schema by providing context and guidance on using the validation tools.
-    
+
     Args:
         test_directory: Path to the directory containing Helm unittest files
         pattern: Optional regex pattern to filter test files
-        
+
     Returns:
         A formatted prompt string for the assistant to validate Helm tests schema
     """
+
     pattern_info = f"using pattern: '{pattern}'" if pattern else "for all .yaml files"
-    
+
     return f"""You are a Helm unittest validation assistant. Your goal is to ensure that Helm unittest test files are correctly structured according to the official JSON schema.
 
 **Context:**
@@ -92,17 +94,18 @@ Please begin by validating the test files in the directory and report your findi
 @mcp.prompt()
 def run_helm_tests(chart_path: str, test_suite_files: str = "tests/*_test.yaml") -> str:
     """Create a prompt to assist with running Helm unittests and analyzing results.
-    
-    This prompt guides the assistant in executing Helm unittests using the run_unittest 
+
+    This prompt guides the assistant in executing Helm unittests using the run_unittest
     tool and providing a clear, structured summary of the test outcomes.
-    
+
     Args:
         chart_path: Path to the Helm chart to be tested
         test_suite_files: Glob pattern for test suite files
-        
+
     Returns:
         A formatted prompt string for the assistant to run and analyze Helm tests
     """
+
     return f"""You are a Helm unittest execution assistant. Your goal is to run Helm unittests and provide a clear summary of the results.
 
 **Context:**
@@ -127,17 +130,18 @@ Please start by running the tests for the specified chart and provide the execut
 @mcp.prompt()
 def update_helm_snapshots(chart_path: str, test_suite_files: str = "tests/*_test.yaml") -> str:
     """Create a prompt to assist with updating Helm unittest snapshots.
-    
-    This prompt guides the assistant in updating snapshots for Helm unittests using 
+
+    This prompt guides the assistant in updating snapshots for Helm unittests using
     the update_snapshot tool and providing a clear summary of the updated results.
-    
+
     Args:
         chart_path: Path to the Helm chart
         test_suite_files: Glob pattern for test suite files
-        
+
     Returns:
         A formatted prompt string for the assistant to update Helm snapshots
     """
+
     return f"""You are a Helm unittest snapshot management assistant. Your goal is to update the snapshot caches for your Helm unit tests when template changes are intentional.
 
 **Context:**

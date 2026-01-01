@@ -14,11 +14,12 @@ class TestFile:
 @dataclass
 class ValidationResult:
     """Result of schema validation operation.
-    
+
     Attributes:
         success (bool): True if validation passed, False otherwise
         message (str): Human-readable message describing the result
-        errors (list[str] | None): List of validation error messages if validation failed, None otherwise
+        errors (list[str] | None): List of validation error messages
+                                   if validation passed, None otherwise
     """
     success: bool
     message: str
@@ -29,7 +30,7 @@ class ValidationResult:
 class TestCaseResult:
     __test__ = False
     """Individual test case result.
-    
+
     Attributes:
         name (str): Name of the test case
         suite (str): Test suite/collection name
@@ -48,7 +49,7 @@ class TestCaseResult:
 class TestResultSummary:
     __test__ = False
     """Summary of test execution results.
-    
+
     Attributes:
         total (int): Total number of tests
         passed (int): Number of passed tests
