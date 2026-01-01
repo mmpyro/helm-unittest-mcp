@@ -26,11 +26,7 @@ The project follows a modular structure optimized for MCP:
 To run this MCP server and execute tests, you need the following:
 
 ### 1. Python Environment
-This project uses `uv` for dependency management.
-```bash
-# Install dependencies
-uv sync
-```
+This project uses `uv` for dependency management. See [Development Commands](#development-commands) for installation.
 
 ### 2. Helm
 [Helm](https://helm.sh/docs/intro/install/) must be installed on your system.
@@ -41,21 +37,25 @@ The `helm-unittest` plugin must be installed in Helm:
 helm plugin install https://github.com/helm-unittest/helm-unittest.git
 ```
 
-## Usage
+## Development Commands
 
-### Running the Server
-You can run the MCP server directly using `mcp`:
+For convenience, a `Makefile` is provided with common tasks:
 
-```bash
-mcp dev src/server.py
-```
-
-### Running Logic Tests
-To verify the MCP server's functionality, run the test suite:
-
-```bash
-uv run pytest
-```
+- **Sync dependencies**:
+  ```bash
+  make sync      # Production only
+  make sync-dev  # Include dev dependencies
+  ```
+- **Running tests**:
+  ```bash
+  make unittest          # Run unit tests only
+  make test-integration  # Run integration tests only
+  make test-all          # Run all tests
+  ```
+- **Local Development**:
+  ```bash
+  make dev               # Start server in development mode
+  ```
 
 ## Configuration for Cloud Code
 

@@ -1,0 +1,30 @@
+<test-results name="helm-unittest" total="6" errors="0" failures="0" inconclusive="0" not-run="0" ignored="0" skipped="0" invalid="0" date="2026-01-01" time="11:40:04">
+	<environment nunit-version="2.5.8.0" clr-version="unknown" os-version="unknown" platform="go1.24.11.darwin-arm64" cwd="/Users/mmarszalek/playground/helm-unittest-mcp" machine-name="MMarszalek-M14Max" user="mmarszalek" user-domain=""></environment>
+	<culture-info current-culture="C" current-uiculture="C"></culture-info>
+	<test-suite type="TestFixture" name="example deployment tests" description="example/tests/deployment/deployment_example_test.yaml" success="true" time="0.004" executed="true" asserts="" result="Success">
+		<results>
+			<test-case name="should render release-name-example deployment object" description="example deployment tests.should render release-name-example deployment object" success="true" time="0.004" executed="true" asserts="0" result="Success"></test-case>
+		</results>
+	</test-suite>
+	<test-suite type="TestFixture" name="example horizontal pod autoscaler tests" description="example/tests/horizontalpodautoscaler/horizontalpodautoscaler_example_test.yaml" success="true" time="0.002" executed="true" asserts="" result="Success">
+		<results>
+			<test-case name="should render release-name-example horizontal pod autoscaler object" description="example horizontal pod autoscaler tests.should render release-name-example horizontal pod autoscaler object" success="true" time="0.002" executed="true" asserts="0" result="Success"></test-case>
+		</results>
+	</test-suite>
+	<test-suite type="TestFixture" name="example ingress tests" description="example/tests/ingress/ingress_example_test.yaml" success="true" time="0.002" executed="true" asserts="" result="Success">
+		<results>
+			<test-case name="should render release-name-example ingress object" description="example ingress tests.should render release-name-example ingress object" success="true" time="0.002" executed="true" asserts="0" result="Success"></test-case>
+		</results>
+	</test-suite>
+	<test-suite type="TestFixture" name="example service tests" description="example/tests/service/service_example_test.yaml" success="true" time="0.002" executed="true" asserts="" result="Success">
+		<results>
+			<test-case name="should render release-name-example service object" description="example service tests.should render release-name-example service object" success="true" time="0.002" executed="true" asserts="0" result="Success"></test-case>
+		</results>
+	</test-suite>
+	<test-suite type="TestFixture" name="example service account tests" description="example/tests/serviceaccount/serviceaccount_example_test.yaml" success="true" time="0.002" executed="true" asserts="" result="Success">
+		<results>
+			<test-case name="should render release-name-example service account object" description="example service account tests.should render release-name-example service account object" success="true" time="0.001" executed="true" asserts="0" result="Success"></test-case>
+			<test-case name="should use release-name-example service account into deployment" description="example service account tests.should use release-name-example service account into deployment" success="true" time="0.001" executed="true" asserts="0" result="Success"></test-case>
+		</results>
+	</test-suite>
+</test-results>

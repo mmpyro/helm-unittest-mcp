@@ -30,6 +30,51 @@ class TestResultParser(object):
         else:
             raise ValueError(f"Unsupported report type: {self.report_type}")
 
+    def _get_root(self, test_result: str) -> ET.Element:
+        """Get the root element from a file path or XML string.
+        
+        Args:
+            test_result (str): Path to XML file or XML string
+            
+        Returns:
+            ET.Element: Root element of the XML
+            
+        Raises:
+            FileNotFoundError: If the test result file doesn't exist and it's not an XML string
+            ET.ParseError: If the XML is malformed
+        """
+        # Try to treat it as a file path first, but only if it's not too long
+        # and doesn't look like XML (starts with '<')
+        is_file = False
+        stripped_result = test_result.strip()
+        
+        if not stripped_result.startswith('<'):
+            try:
+                # Path names have a limit, avoids OSError: [Errno 63] File name too long
+                if len(test_result) < 4096:
+                    path = Path(test_result)
+                    if path.exists() and path.is_file():
+                        is_file = True
+            except OSError:
+                pass
+
+        if is_file:
+            tree = ET.parse(test_result)
+            return tree.getroot()
+        
+        # If it looks like XML, try to parse it from string
+        if stripped_result.startswith('<'):
+            return ET.fromstring(test_result)
+            
+        # If it's not a file and doesn't explicitly look like XML, 
+        # we need to decide if it's a missing file or an invalid XML string.
+        # If it's a single line and looks like a path, assume FileNotFoundError.
+        if '\n' not in test_result and ('/' in test_result or '\\' in test_result or test_result.lower().endswith('.xml')):
+            raise FileNotFoundError(f"File not found: {test_result}")
+            
+        # Otherwise, try to parse it as an XML string (which may raise ET.ParseError)
+        return ET.fromstring(test_result)
+
     def _parse_nunit(self, test_result: str) -> TestResultSummary:
         """Parse NUnit format test results.
         
@@ -43,14 +88,7 @@ class TestResultParser(object):
             FileNotFoundError: If the test result file doesn't exist
             ET.ParseError: If the XML is malformed
         """
-        # Check if test_result is a file path or XML string
-        test_result_path = Path(test_result)
-        if test_result_path.exists() and test_result_path.is_file():
-            tree = ET.parse(test_result)
-            root = tree.getroot()
-        else:
-            # Assume it's an XML string
-            root = ET.fromstring(test_result)
+        root = self._get_root(test_result)
         
         # Initialize counters
         total_tests = 0
@@ -159,14 +197,7 @@ class TestResultParser(object):
             FileNotFoundError: If the test result file doesn't exist
             ET.ParseError: If the XML is malformed
         """
-        # Check if test_result is a file path or XML string
-        test_result_path = Path(test_result)
-        if test_result_path.exists() and test_result_path.is_file():
-            tree = ET.parse(test_result)
-            root = tree.getroot()
-        else:
-            # Assume it's an XML string
-            root = ET.fromstring(test_result)
+        root = self._get_root(test_result)
         
         # Initialize counters
         total_tests = 0
@@ -261,14 +292,7 @@ class TestResultParser(object):
             FileNotFoundError: If the test result file doesn't exist
             ET.ParseError: If the XML is malformed
         """
-        # Check if test_result is a file path or XML string
-        test_result_path = Path(test_result)
-        if test_result_path.exists() and test_result_path.is_file():
-            tree = ET.parse(test_result)
-            root = tree.getroot()
-        else:
-            # Assume it's an XML string
-            root = ET.fromstring(test_result)
+        root = self._get_root(test_result)
         
         # Initialize counters
         total_tests = 0

@@ -1,0 +1,33 @@
+<testsuites>
+	<testsuite id="0" tests="1" failures="0" errors="0" package="" time="0.004" name="example deployment tests" timestamp="2026-01-01T11:39:58" hostname="MMarszalek-M14Max">
+		<properties>
+			<property name="helm-unittest.version" value="1.6"></property>
+		</properties>
+		<testcase classname="example deployment tests" name="should render release-name-example deployment object" time="0.004"></testcase>
+	</testsuite>
+	<testsuite id="1" tests="1" failures="0" errors="0" package="" time="0.002" name="example horizontal pod autoscaler tests" timestamp="2026-01-01T11:39:58" hostname="MMarszalek-M14Max">
+		<properties>
+			<property name="helm-unittest.version" value="1.6"></property>
+		</properties>
+		<testcase classname="example horizontal pod autoscaler tests" name="should render release-name-example horizontal pod autoscaler object" time="0.002"></testcase>
+	</testsuite>
+	<testsuite id="2" tests="1" failures="0" errors="0" package="" time="0.001" name="example ingress tests" timestamp="2026-01-01T11:39:58" hostname="MMarszalek-M14Max">
+		<properties>
+			<property name="helm-unittest.version" value="1.6"></property>
+		</properties>
+		<testcase classname="example ingress tests" name="should render release-name-example ingress object" time="0.001"></testcase>
+	</testsuite>
+	<testsuite id="3" tests="1" failures="0" errors="0" package="" time="0.002" name="example service tests" timestamp="2026-01-01T11:39:58" hostname="MMarszalek-M14Max">
+		<properties>
+			<property name="helm-unittest.version" value="1.6"></property>
+		</properties>
+		<testcase classname="example service tests" name="should render release-name-example service object" time="0.002"></testcase>
+	</testsuite>
+	<testsuite id="4" tests="2" failures="0" errors="0" package="" time="0.002" name="example service account tests" timestamp="2026-01-01T11:39:58" hostname="MMarszalek-M14Max">
+		<properties>
+			<property name="helm-unittest.version" value="1.6"></property>
+		</properties>
+		<testcase classname="example service account tests" name="should render release-name-example service account object" time="0.001"></testcase>
+		<testcase classname="example service account tests" name="should use release-name-example service account into deployment" time="0.001"></testcase>
+	</testsuite>
+</testsuites>
