@@ -50,11 +50,19 @@ jobs:
         run: |
           make test-all
 
-      - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
+      - name: Test Report
+        uses: dorny/test-reporter@v1
         if: always()
         with:
-          files: test-results.xml
+          name: helm unittest mcp server
+          path: test-results.xml
+          reporter: java-junit
+
+      # - name: Publish Test Results
+      #   uses: EnricoMi/publish-unit-test-result-action@v2
+      #   if: always()
+      #   with:
+      #     files: test-results.xml
 
       - name: Pytest coverage comment
         if: github.event_name == 'pull_request'
