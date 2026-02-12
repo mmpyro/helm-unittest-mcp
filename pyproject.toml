@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "helm-unittest-mcp"
 version = "0.1.0"
@@ -5,10 +9,14 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "jsonschema>=4.23.0",
     "mcp[cli]>=1.25.0",
     "pyyaml>=6.0.3",
     "requests>=2.32.5",
 ]
+
+[project.scripts]
+helm-unittest-mcp = "server:main"
 
 [dependency-groups]
 dev = [
@@ -35,3 +43,10 @@ check_untyped_defs = true
 ignore_missing_imports = true
 warn_unused_ignores = true
 show_error_codes = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tools", "src/utils", "src/prompt", "src/resources"]
+sources = {"src" = ""}
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/server.py" = "server.py"
