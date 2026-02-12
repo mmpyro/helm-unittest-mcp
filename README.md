@@ -67,6 +67,30 @@ For convenience, a `Makefile` is provided with common tasks:
 
 To use this MCP server in Cloud Code, add the following configuration to your `mcpServers` setting:
 
+**Important**: Before using this MCP server, you need to install the dependencies in the Python interpreter used by Claude. Run this command:
+```bash
+uv pip install --system -r pyproject.toml
+```
+
+Then add the following configuration to your `mcpServers` setting:
+
+### Project scope .mcp.json
+```json
+{
+  "mcpServers": {
+    "helmunittest": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "helm-unittest-mcp/src/server.py"
+      ],
+      "env": {}
+    }
+  }
+}
+```
+
+### User scope ~/.claude.json
 ```json
 {
   "mcpServers": {

@@ -36,4 +36,5 @@ typecheck:
 check: lint typecheck
 
 dev:
-	mcp dev ./src/server.py
+	uv run mcp dev ./src/server.py
+
