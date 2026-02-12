@@ -291,8 +291,9 @@ wheels = [
 [[package]]
 name = "helm-unittest-mcp"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
+    { name = "jsonschema" },
     { name = "mcp", extra = ["cli"] },
     { name = "pyyaml" },
     { name = "requests" },
@@ -310,6 +311,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "jsonschema", specifier = ">=4.23.0" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.25.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "requests", specifier = ">=2.32.5" },

@@ -67,14 +67,15 @@ For convenience, a `Makefile` is provided with common tasks:
 
 To use this MCP server in Cloud Code, add the following configuration to your `mcpServers` setting:
 
+### Local path
+
 **Important**: Before using this MCP server, you need to install the dependencies in the Python interpreter used by Claude. Run this command:
 ```bash
 uv pip install --system -r pyproject.toml
 ```
 
-Then add the following configuration to your `mcpServers` setting:
+Then add the following configuration to your `mcpServers` settings
 
-### Project scope .mcp.json
 ```json
 {
   "mcpServers": {
@@ -90,17 +91,42 @@ Then add the following configuration to your `mcpServers` setting:
 }
 ```
 
-### User scope ~/.claude.json
+### uvx
+
+[`uvx`](https://docs.astral.sh/uv/guides/tools/) is a `uv` subcommand for running Python tools in an isolated, cached environment (similar in spirit to `pipx`).
+Instead of pointing Cloud Code at a local checkout and manually installing dependencies into the Python interpreter used by the assistant, `uvx` will:
+
+- create an isolated environment automatically,
+- install this project (and its dependencies) into that environment,
+- cache the environment for fast subsequent runs,
+- allow easy pinning to a version/branch/commit via the Git URL.
+
+This is typically better than the **Local path** setup because it avoids “works on my machine” issues, does not require pre-installing dependencies into a shared interpreter, and makes upgrades/pinning straightforward.
+
+Example configuration:
 ```json
 {
   "mcpServers": {
-    "helmunittest": {
+    "helm-unittest": {
       "type": "stdio",
-      "command": "python",
+      "command": "uvx",
       "args": [
-        "helm-unittest-mcp/src/server.py"
-      ],
-      "env": {}
+        "git+https://github.com/mmpyro/helm-unittest-mcp.git"
+      ]
+    }
+  }
+}
+```
+Using MCP Server from specific branch
+```json
+{
+  "mcpServers": {
+    "helm-unittest": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "git+https://github.com/mmpyro/helm-unittest-mcp.git@<branch-name>"
+      ]
     }
   }
 }
