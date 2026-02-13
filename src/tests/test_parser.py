@@ -11,12 +11,13 @@ JUNIT_XML = """<?xml version="1.0" encoding="UTF-8"?>
     <testsuite name="Suite 1" time="1.0">
         <testcase name="Test 1" time="0.6" />
         <testcase name="Test 2" time="0.4">
-            <failure message="Assertion failed">Details</failure>
+            <failure message="Assertion failed">Details with
+                indentation</failure>
         </testcase>
     </testsuite>
     <testsuite name="Suite 2" time="0.5">
         <testcase name="Test 3" time="0.5">
-            <skipped message="Ignored" />
+            <skipped message="Ignored">Skip Reason</skipped>
         </testcase>
     </testsuite>
 </testsuites>
@@ -28,7 +29,10 @@ XUNIT_XML = """<?xml version="1.0" encoding="UTF-8"?>
         <collection name="Coll 1">
             <test name="Test 1" result="Pass" time="0.7" />
             <test name="Test 2" result="Fail" time="0.5">
-                <failure message="Error found" />
+                <failure>
+                    <message>Error found</message>
+                    <stack-trace>Line 10: expected true but was false</stack-trace>
+                </failure>
             </test>
         </collection>
     </assembly>
@@ -43,6 +47,7 @@ NUNIT_XML = """<?xml version="1.0" encoding="UTF-8"?>
             <test-case name="Test 2" result="Failure" time="0.5">
                 <failure>
                     <message>Fail Message</message>
+                    <stack-trace>Assertion error at line 5</stack-trace>
                 </failure>
             </test-case>
         </results>
@@ -78,7 +83,9 @@ def test_parse_junit_string():
     assert result.test_cases[0].result == "passed"
     assert result.test_cases[1].result == "failed"
     assert result.test_cases[1].message is not None
-    assert "Assertion failed" in result.test_cases[1].message
+    assert "Assertion failed\nDetails with\n                indentation" == result.test_cases[1].message
+    assert result.test_cases[2].result == "skipped"
+    assert "Ignored\nSkip Reason" == result.test_cases[2].message
 
 
 @patch("pathlib.Path.exists")
@@ -110,6 +117,7 @@ def test_parse_xunit_string():
     assert result.failed == 1
     assert result.time == 1.2
     assert result.test_cases[1].result == "failed"
+    assert "Error found\nLine 10: expected true but was false" == result.test_cases[1].message
 
 
 def test_parse_nunit_string():
@@ -123,7 +131,7 @@ def test_parse_nunit_string():
     assert result.time == 2.0
     assert result.test_cases[0].result == "passed"
     assert result.test_cases[1].result == "failed"
-    assert result.test_cases[1].message == "Fail Message"
+    assert "Fail Message\nAssertion error at line 5" == result.test_cases[1].message
 
 
 def test_parse_invalid_xml():
