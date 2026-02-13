@@ -157,10 +157,15 @@ class TestResultParser(object):
                         failure = tc.find('failure')
                         if failure is not None:
                             message_elem = failure.find('message')
-                            if message_elem is not None and message_elem.text:
-                                tc_message = message_elem.text.strip()
+                            stack_trace_elem = failure.find('stack-trace')
+
+                            msg = (message_elem.text or "").strip() if message_elem is not None else ""
+                            stack = (stack_trace_elem.text or "") if stack_trace_elem is not None else ""
+
+                            if msg and stack:
+                                tc_message = f"{msg}\n{stack}"
                             else:
-                                tc_message = failure.text.strip() if failure.text else None
+                                tc_message = msg or stack or None
 
                         test_cases.append(
                             TestCaseResult(
@@ -168,7 +173,7 @@ class TestResultParser(object):
                                 suite=suite_name,
                                 result=normalized_result,
                                 time=tc_time,
-                                message=tc_message
+                                message=tc_message.strip() if tc_message else None
                             )
                         )
 
@@ -249,15 +254,30 @@ class TestResultParser(object):
 
                 if failure is not None:
                     tc_result = "failed"
-                    tc_message = failure.get('message') or failure.text
+                    msg_attr = failure.get('message')
+                    msg_text = failure.text
+                    if msg_attr and msg_text:
+                        tc_message = f"{msg_attr}\n{msg_text}"
+                    else:
+                        tc_message = msg_attr or msg_text
                     total_failed += 1
                 elif error is not None:
                     tc_result = "error"
-                    tc_message = error.get('message') or error.text
+                    msg_attr = error.get('message')
+                    msg_text = error.text
+                    if msg_attr and msg_text:
+                        tc_message = f"{msg_attr}\n{msg_text}"
+                    else:
+                        tc_message = msg_attr or msg_text
                     total_errors += 1
                 elif skipped is not None:
                     tc_result = "skipped"
-                    tc_message = skipped.get('message') or skipped.text
+                    msg_attr = skipped.get('message')
+                    msg_text = skipped.text
+                    if msg_attr and msg_text:
+                        tc_message = f"{msg_attr}\n{msg_text}"
+                    else:
+                        tc_message = msg_attr or msg_text
                     total_skipped += 1
                 else:
                     total_passed += 1
@@ -342,8 +362,15 @@ class TestResultParser(object):
                     failure_elem = test.find('.//failure')
                     if failure_elem is not None:
                         message_elem = failure_elem.find('message')
-                        if message_elem is not None and message_elem.text:
-                            failure_message = message_elem.text.strip()
+                        stack_trace_elem = failure_elem.find('stack-trace')
+
+                        msg = (message_elem.text or "").strip() if message_elem is not None else ""
+                        stack = (stack_trace_elem.text or "") if stack_trace_elem is not None else ""
+
+                        if msg and stack:
+                            failure_message = f"{msg}\n{stack}"
+                        else:
+                            failure_message = msg or stack or None
 
                     test_cases.append(
                         TestCaseResult(
@@ -351,7 +378,7 @@ class TestResultParser(object):
                             suite=collection_name,
                             result=normalized_result,
                             time=test_time,
-                            message=failure_message
+                            message=failure_message.strip() if failure_message else None
                         )
                     )
 
