@@ -90,6 +90,7 @@ def test_validate_schema_invalid_yaml(mock_file, mock_exists, mock_get_schema):
 
     assert result.success is False
     assert "Invalid YAML syntax" in result.message
+    assert result.errors is not None
     assert any("YAML parsing error" in err for err in result.errors)
 
 
@@ -101,6 +102,7 @@ def test_validate_schema_network_error(mock_get_schema):
 
     assert result.success is False
     assert "Failed to fetch schema" in result.message
+    assert result.errors is not None
     assert any("Network error" in err for err in result.errors)
 
 
@@ -116,6 +118,7 @@ def test_validate_schema_validation_error(mock_file, mock_exists, mock_get_schem
 
     assert result.success is False
     assert "Schema validation failed" in result.message
+    assert result.errors is not None
     assert any("Validation error" in err for err in result.errors)
 
 
