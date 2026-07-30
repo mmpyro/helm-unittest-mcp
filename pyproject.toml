@@ -9,10 +9,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "jsonschema>=4.23.0",
-    "mcp[cli]>=1.25.0",
+    "jsonschema>=4.26.0",
+    "mcp[cli]>=2.0.0",
     "pyyaml>=6.0.3",
-    "requests>=2.32.5",
+    "requests>=2.33.1",
 ]
 
 [project.scripts]
@@ -22,8 +22,8 @@ helm-unittest-mcp = "server:main"
 dev = [
     "flake8>=7.3.0",
     "mypy>=1.19.1",
-    "pytest>=9.0.2",
-    "pytest-cov>=6.0.0",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
     "types-pyyaml>=6.0.12.20250915",
     "types-requests>=2.32.4.20250913",
 ]
