@@ -7,6 +7,37 @@ from utils.dtos import TestFile
 from typing import Optional
 
 
+class _DuplicateAnchorSafeLoader(yaml.SafeLoader):
+    """A YAML SafeLoader that tolerates duplicate anchor names.
+
+    Helm-unittest test files commonly reuse anchor names (e.g. &podDoc)
+    across different test cases within the same document. The standard
+    SafeLoader raises a ComposerError for these. This loader silently
+    overwrites the previous anchor, matching YAML 1.2 semantics where
+    the last definition of an anchor wins.
+    """
+    pass
+
+
+_original_compose_node = _DuplicateAnchorSafeLoader.compose_node
+
+
+def _compose_node_allow_duplicates(
+    self: _DuplicateAnchorSafeLoader,
+    parent: Optional[yaml.nodes.Node],
+    index: int,
+) -> Optional[yaml.nodes.Node]:
+    if self.check_event(yaml.events.AliasEvent):
+        return _original_compose_node(self, parent, index)
+    event = self.peek_event()
+    if event.anchor is not None and event.anchor in self.anchors:
+        del self.anchors[event.anchor]
+    return _original_compose_node(self, parent, index)
+
+
+_DuplicateAnchorSafeLoader.compose_node = _compose_node_allow_duplicates  # type: ignore[assignment]
+
+
 mcp = Server().mcp
 
 
@@ -102,7 +133,7 @@ def get_test_from_file(test_file_path: str) -> TestFile:
     # Read and parse the file
     try:
         with open(test_file_path, 'r') as f:
-            tests = yaml.safe_load(f)
+            tests = yaml.load(f, Loader=_DuplicateAnchorSafeLoader)
     except FileNotFoundError:
         raise FileNotFoundError(
             f"Test file not found: {test_file_path}. "

@@ -92,31 +92,40 @@ Please begin by validating the test files in the directory and report your findi
 
 
 @mcp.prompt()
-def run_helm_tests(chart_path: str, test_suite_files: str = "tests/*_test.yaml") -> str:
+def run_helm_tests(chart_path: str, test_directory: str = "tests", test_pattern: str = "", test_suite_files: str = "tests/*_test.yaml") -> str:
     """Create a prompt to assist with running Helm unittests and analyzing results.
 
-    This prompt guides the assistant in executing Helm unittests using the run_unittest
-    tool and providing a clear, structured summary of the test outcomes.
+    This prompt guides the assistant in executing Helm unittests using parallel
+    execution by default and providing a clear, structured summary of the test outcomes.
 
     Args:
         chart_path: Path to the Helm chart to be tested
-        test_suite_files: Glob pattern for test suite files
+        test_directory: Path to the directory containing test files
+        test_pattern: Optional regex pattern to filter test files
+        test_suite_files: Glob pattern for test suite files (used by sequential fallback)
 
     Returns:
         A formatted prompt string for the assistant to run and analyze Helm tests
     """
 
+    pattern_info = f"using pattern: '{test_pattern}'" if test_pattern else "for all .yaml files"
+
     return f"""You are a Helm unittest execution assistant. Your goal is to run Helm unittests and provide a clear summary of the results.
 
 **Context:**
 - Chart Path: {chart_path}
-- Test Suite Pattern: {test_suite_files}
+- Test Directory: {test_directory}
+- File Filter: {pattern_info}
+- Test Suite Pattern (sequential fallback): {test_suite_files}
 
 **Available Tools:**
-1. `run_unittest(test_suite_files, chart_path, values_path, output_type)` - Runs Helm unittests and returns a summary.
+1. `run_tests_parallel(dir_path, chart_path, pattern, values_path, output_type, max_workers)` - **Default.** Discovers tests, groups by suite, \
+and runs suites in parallel. Tests within a suite run sequentially.
+2. `run_unittest(test_suite_files, chart_path, values_path, output_type)` - Runs Helm unittests sequentially. \
+Use as a fallback for single-file execution.
 
 **Your Workflow:**
-1. Call `run_unittest` with the provided `{chart_path}` and `{test_suite_files}`.
+1. Call `run_tests_parallel` with `dir_path="{test_directory}"` and `chart_path="{chart_path}"` to run all tests in parallel.
 2. Analyze the `TestResultSummary` returned by the tool.
 3. Present the results to the user in a clear, summarized format:
     - Overview: Total tests, Passed, Failed, Skipped, and total Execution Time.

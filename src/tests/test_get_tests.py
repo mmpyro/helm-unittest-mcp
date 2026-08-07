@@ -33,6 +33,21 @@ NOT_A_DICT_YAML = """
 - list
 """
 
+DUPLICATE_ANCHOR_YAML = """
+suite: Duplicate Anchor Suite
+tests:
+  - it: test case 1
+    asserts:
+      - documentIndex: &myDoc 0
+        isKind:
+          of: Pod
+  - it: test case 2
+    asserts:
+      - documentIndex: &myDoc 0
+        isKind:
+          of: Deployment
+"""
+
 
 def test_get_test_from_file_success():
     with patch("builtins.open", mock_open(read_data=VALID_YAML)):
@@ -43,6 +58,15 @@ def test_get_test_from_file_success():
         assert result.tests == ["should render deployment", "should render service"]
         assert result.release == {"name": "my-release", "namespace": "default"}
         assert result.file_path == "fake_path.yaml"
+
+
+def test_get_test_from_file_duplicate_anchors():
+    with patch("builtins.open", mock_open(read_data=DUPLICATE_ANCHOR_YAML)):
+        result = get_test_from_file("dup_anchor.yaml")
+
+        assert isinstance(result, TestFile)
+        assert result.suite == "Duplicate Anchor Suite"
+        assert result.tests == ["test case 1", "test case 2"]
 
 
 def test_get_test_from_file_not_found():
