@@ -148,6 +148,45 @@ def test_validate_tests_success(mock_validate, mock_walk, mock_isdir, mock_exist
 
 @patch("os.path.exists")
 @patch("os.path.isdir")
+@patch("os.walk")
+@patch("tools.schema_validator.validate_schema")
+def test_validate_tests_options(mock_validate, mock_walk, mock_isdir, mock_exists):
+    from utils.dtos import BatchValidationSummary
+
+    mock_exists.return_value = True
+    mock_isdir.return_value = True
+    mock_walk.return_value = [
+        ("/root", [], ["valid.yaml", "invalid.yaml"])
+    ]
+
+    mock_validate.side_effect = [
+        ValidationResult(success=True, message="OK"),
+        ValidationResult(success=False, message="Fail", errors=["Err"]),
+    ]
+
+    # Test only_failures=True
+    failed_results = validate_tests("/root", only_failures=True)
+    assert len(failed_results) == 1
+    assert failed_results[0].success is False
+
+    # Reset side_effect
+    mock_validate.side_effect = [
+        ValidationResult(success=True, message="OK"),
+        ValidationResult(success=False, message="Fail", errors=["Err"]),
+    ]
+
+    # Test return_summary=True
+    summary = validate_tests("/root", return_summary=True)
+    assert isinstance(summary, BatchValidationSummary)
+    assert summary.total_files == 2
+    assert summary.valid_files == 1
+    assert summary.invalid_files == 1
+    assert len(summary.failures) == 1
+    assert summary.failures[0].success is False
+
+
+@patch("os.path.exists")
+@patch("os.path.isdir")
 def test_validate_tests_invalid_dir(mock_isdir, mock_exists):
     mock_exists.return_value = False
     with pytest.raises(FileNotFoundError):

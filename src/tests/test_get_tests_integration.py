@@ -56,8 +56,8 @@ class TestGetTestFromFileIntegration:
         test_file_path = os.path.join(ingress_tests_dir, "ingress_example_test.yaml")
         # Verify file exists
         assert os.path.exists(test_file_path), f"Test file not found: {test_file_path}"
-        # Parse the file
-        result = get_test_from_file(test_file_path)
+        # Parse the file with include_release=True
+        result = get_test_from_file(test_file_path, include_release=True)
         # Verify the result
         assert isinstance(result, TestFile)
         assert result.suite == "example ingress tests"
@@ -82,7 +82,7 @@ class TestGetTestFromFileIntegration:
         parsed_files = []
         for test_file in test_files:
             try:
-                result = get_test_from_file(test_file)
+                result = get_test_from_file(test_file, include_release=True)
                 parsed_files.append(result)
                 # Verify basic structure
                 assert isinstance(result, TestFile)
@@ -95,6 +95,7 @@ class TestGetTestFromFileIntegration:
                 pytest.fail(f"Failed to parse {test_file}: {e}")
         # Verify we successfully parsed files
         assert len(parsed_files) > 0
+
 
     def test_parse_nonexistent_file(self):
         """Test that parsing a nonexistent file raises FileNotFoundError."""
@@ -148,7 +149,7 @@ class TestGetTestsIntegration:
             assert result.suite
             assert isinstance(result.tests, list)
             assert len(result.tests) > 0
-            assert isinstance(result.release, dict)
+            assert result.release is None
             assert result.file_path.startswith(ingress_tests_dir)
 
     def test_get_tests_from_all_example_directories(self, example_tests_dir):
@@ -247,8 +248,31 @@ class TestGetTestsIntegration:
         assert "Suite 1" in suites
         assert "Suite 2" in suites
 
+    def test_get_tests_suite_pattern_and_pagination(self, example_tests_dir):
+        """Test getting tests with suite_pattern filtering and pagination."""
+        all_tests = get_tests(example_tests_dir)
+        assert len(all_tests) >= 5
+
+        ingress_suite_tests = get_tests(example_tests_dir, suite_pattern=".*ingress.*")
+        assert len(ingress_suite_tests) == 1
+        assert "ingress" in ingress_suite_tests[0].suite.lower()
+
+        paginated_tests = get_tests(example_tests_dir, offset=1, limit=2)
+        assert len(paginated_tests) == 2
+        assert paginated_tests[0].suite == all_tests[1].suite
+        assert paginated_tests[1].suite == all_tests[2].suite
+
+    def test_get_tests_include_release(self, example_tests_dir):
+        """Test include_release flag in get_tests."""
+        without_release = get_tests(example_tests_dir, include_release=False)
+        assert all(tf.release is None for tf in without_release)
+
+        with_release = get_tests(example_tests_dir, include_release=True)
+        assert any(tf.release is not None for tf in with_release)
+
 
 class TestGetTestsEdgeCases:
+
     """Integration tests for edge cases and special scenarios."""
 
     def test_empty_directory(self, temp_test_dir):
@@ -294,7 +318,7 @@ class TestGetTestsEdgeCases:
         result = get_test_from_file(minimal_file)
         assert result.suite == "Minimal Suite"
         assert result.tests == ["single test"]
-        assert result.release == {}  # Default empty dict
+        assert result.release is None
         assert result.file_path == minimal_file
 
     def test_file_with_complex_release_structure(self, temp_test_dir):
@@ -313,7 +337,7 @@ release:
 tests:
   - it: complex test
 """)
-        result = get_test_from_file(complex_file)
+        result = get_test_from_file(complex_file, include_release=True)
         assert result.suite == "Complex Suite"
         assert result.tests == ["complex test"]
         assert isinstance(result.release, dict)
@@ -321,3 +345,4 @@ tests:
         assert result.release["namespace"] == "my-namespace"
         assert "values" in result.release
         assert "set" in result.release
+

@@ -45,21 +45,28 @@ class TestRunTestsIntegration:
 
     def test_run_unittest_all_tests(self, chart_path):
         """Test running all tests in the example chart."""
-        # Using default pattern "tests/*/*.yaml" which matches example/tests structure
-        result = run_unittest(
+        # Using default include_test_cases="failed_only"
+        result_default = run_unittest(
             test_suite_files="tests/*/*.yaml",
             chart_path=chart_path,
             output_type="xunit"
         )
 
-        assert isinstance(result, TestResultSummary)
-        assert result.total == 6
-        assert result.passed == 6
-        assert result.failed == 0
-        assert len(result.test_cases) == 6
+        assert isinstance(result_default, TestResultSummary)
+        assert result_default.total == 6
+        assert result_default.passed == 6
+        assert result_default.failed == 0
+        assert len(result_default.test_cases) == 0
 
-        # Verify some test names are present
-        test_names = [tc.name for tc in result.test_cases]
+        # With include_test_cases="all"
+        result_all = run_unittest(
+            test_suite_files="tests/*/*.yaml",
+            chart_path=chart_path,
+            output_type="xunit",
+            include_test_cases="all",
+        )
+        assert len(result_all.test_cases) == 6
+        test_names = [tc.name for tc in result_all.test_cases]
         assert "should render release-name-example deployment object" in test_names
         assert "should render release-name-example service object" in test_names
 
@@ -68,7 +75,8 @@ class TestRunTestsIntegration:
         result = run_unittest(
             test_suite_files="tests/ingress/*.yaml",
             chart_path=chart_path,
-            output_type="junit"
+            output_type="junit",
+            include_test_cases="all",
         )
 
         assert result.total == 1
@@ -94,10 +102,12 @@ class TestRunTestsIntegration:
             result = run_unittest(
                 test_suite_files="tests/deployment/*.yaml",
                 chart_path=chart_path,
-                output_type=fmt
+                output_type=fmt,
+                include_test_cases="all",
             )
             assert result.passed >= 1
             assert len(result.test_cases) >= 1
+
 
     def test_update_snapshot_functionality(self, temp_chart):
         """Test update_snapshot tool (using a temporary copy of the chart)."""

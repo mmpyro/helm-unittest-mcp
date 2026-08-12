@@ -5,10 +5,10 @@ import requests
 from jsonschema import validate, ValidationError
 from pathlib import Path
 from typing import Optional
-from utils.mcp import Server
-from utils.dtos import ValidationResult
-
 from functools import lru_cache
+from utils.mcp import Server
+from utils.dtos import ValidationResult, BatchValidationSummary
+
 
 
 mcp = Server().mcp
@@ -113,7 +113,12 @@ def validate_schema(test_file_path: str) -> ValidationResult:
 
 
 @mcp.tool()
-def validate_tests(dir_path: str, pattern: Optional[str] = "") -> list[ValidationResult]:
+def validate_tests(
+    dir_path: str,
+    pattern: Optional[str] = "",
+    only_failures: bool = False,
+    return_summary: bool = False,
+) -> list[ValidationResult] | BatchValidationSummary:
     """Recursively validate all test files from a directory and its subdirectories.
 
     This function walks through the specified directory and validates each matching
@@ -124,11 +129,11 @@ def validate_tests(dir_path: str, pattern: Optional[str] = "") -> list[Validatio
         dir_path (str): Path to the directory to search for test files
         pattern (Optional[str]): Optional regex pattern to filter files. If empty or None,
                                 matches all .yaml files. Otherwise, uses the provided regex pattern.
+        only_failures (bool): If True, returns only failed ValidationResult objects.
+        return_summary (bool): If True, returns a BatchValidationSummary object.
 
     Returns:
-        list[ValidationResult]: List of ValidationResult objects, one for each file that was
-                                attempted to be validated. Files that match the pattern but fail
-                                to validate will have success=False in their result.
+        list[ValidationResult] | BatchValidationSummary: List of results or aggregate summary.
 
     Raises:
         ValueError: If dir_path is empty, not a string, or pattern is invalid regex
@@ -191,4 +196,17 @@ def validate_tests(dir_path: str, pattern: Optional[str] = "") -> list[Validatio
                         )
                     )
 
+    if return_summary:
+        failures = [r for r in validation_results if not r.success]
+        return BatchValidationSummary(
+            total_files=len(validation_results),
+            valid_files=len(validation_results) - len(failures),
+            invalid_files=len(failures),
+            failures=failures,
+        )
+
+    if only_failures:
+        return [r for r in validation_results if not r.success]
+
     return validation_results
+

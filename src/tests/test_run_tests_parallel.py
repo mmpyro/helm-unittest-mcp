@@ -147,6 +147,8 @@ class TestRunSuite:
             values_path=["values.yaml"],
             output_type="xunit",
             update_snapshot=False,
+            include_test_cases="failed_only",
+            max_message_length=1000,
         )
         mock_internal.assert_any_call(
             test_suite_files="/a/test2.yaml",
@@ -154,6 +156,8 @@ class TestRunSuite:
             values_path=["values.yaml"],
             output_type="xunit",
             update_snapshot=False,
+            include_test_cases="failed_only",
+            max_message_length=1000,
         )
 
         assert result.total == 2
@@ -179,6 +183,8 @@ class TestRunSuite:
             values_path=[],
             output_type="junit",
             update_snapshot=True,
+            include_test_cases="failed_only",
+            max_message_length=1000,
         )
         assert result.total == 1
 
@@ -200,6 +206,8 @@ class TestRunSuite:
             values_path=[],
             output_type="xunit",
             update_snapshot=False,
+            include_test_cases="failed_only",
+            max_message_length=1000,
         )
 
 
@@ -335,4 +343,35 @@ class TestRunTestsParallel:
             values_path=["v1.yaml", "v2.yaml"],
             output_type="junit",
             update_snapshot=False,
+            include_test_cases="failed_only",
+            max_message_length=1000,
         )
+
+    @patch("tools.run_tests_parallel.get_tests")
+    @patch("tools.run_tests_parallel._run_unittest_internal")
+    def test_passes_include_test_cases_and_max_message_length(self, mock_internal, mock_get_tests):
+        mock_get_tests.return_value = [
+            TestFile(suite="S", tests=["t1"], release={}, file_path="/a/test.yaml"),
+        ]
+        mock_internal.return_value = TestResultSummary(
+            total=1, passed=1, failed=0, skipped=0, errors=0, time=0.1,
+            test_cases=[],
+        )
+
+        run_tests_parallel(
+            "/tests", "./chart",
+            include_test_cases="all",
+            max_message_length=500,
+        )
+
+        mock_internal.assert_called_once_with(
+            test_suite_files="/a/test.yaml",
+            chart_path="./chart",
+            values_path=[],
+            output_type="xunit",
+            update_snapshot=False,
+            include_test_cases="all",
+            max_message_length=500,
+        )
+
+

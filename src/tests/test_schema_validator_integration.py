@@ -109,8 +109,24 @@ class TestSchemaValidatorIntegration:
         assert results[0].success is True
         assert "deployment_example_test.yaml" in results[0].message
 
+    def test_validate_tests_options_integration(self, example_dir):
+        """Test validate_tests with return_summary=True and only_failures=True."""
+        from utils.dtos import BatchValidationSummary
+
+        summary = validate_tests(example_dir, return_summary=True)
+        assert isinstance(summary, BatchValidationSummary)
+        assert summary.total_files == 5
+        assert summary.valid_files == 5
+        assert summary.invalid_files == 0
+        assert len(summary.failures) == 0
+
+        only_failures = validate_tests(example_dir, only_failures=True)
+        assert isinstance(only_failures, list)
+        assert len(only_failures) == 0
+
 
 class TestSchemaValidatorEdgeCases:
+
     """Integration tests for edge cases and error handling."""
 
     def test_validate_nonexistent_file(self):

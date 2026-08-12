@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 
 @dataclass
@@ -7,8 +7,8 @@ class TestFile:
     __test__ = False
     suite: str
     tests: list[str]
-    release: dict[str, Any]
     file_path: str
+    release: Optional[dict[str, Any]] = None
 
 
 @dataclass
@@ -24,6 +24,23 @@ class ValidationResult:
     success: bool
     message: str
     errors: list[str] | None = None
+
+
+@dataclass
+class BatchValidationSummary:
+    """Summary of batch schema validation operation.
+
+    Attributes:
+        total_files (int): Total number of files processed
+        valid_files (int): Number of valid test files
+        invalid_files (int): Number of invalid test files
+        failures (list[ValidationResult]): Validation results for failed files only
+    """
+    total_files: int
+    valid_files: int
+    invalid_files: int
+    failures: list[ValidationResult]
+
 
 
 @dataclass

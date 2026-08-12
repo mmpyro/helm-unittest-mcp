@@ -56,8 +56,14 @@ def test_get_test_from_file_success():
         assert isinstance(result, TestFile)
         assert result.suite == "Test Suite"
         assert result.tests == ["should render deployment", "should render service"]
-        assert result.release == {"name": "my-release", "namespace": "default"}
+        assert result.release is None
         assert result.file_path == "fake_path.yaml"
+
+    with patch("builtins.open", mock_open(read_data=VALID_YAML)):
+        result_with_release = get_test_from_file("fake_path.yaml", include_release=True)
+
+        assert isinstance(result_with_release, TestFile)
+        assert result_with_release.release == {"name": "my-release", "namespace": "default"}
 
 
 def test_get_test_from_file_duplicate_anchors():
@@ -113,8 +119,8 @@ def test_get_tests_success(mock_get_test, mock_walk, mock_isdir, mock_exists):
     ]
 
     mock_get_test.side_effect = [
-        TestFile(suite="Suite 1", tests=["t1"], release={}, file_path="/root/test1.yaml"),
-        TestFile(suite="Suite 2", tests=["t2"], release={}, file_path="/root/dir1/test2.yaml")
+        TestFile(suite="Suite 1", tests=["t1"], release=None, file_path="/root/test1.yaml"),
+        TestFile(suite="Suite 2", tests=["t2"], release=None, file_path="/root/dir1/test2.yaml")
     ]
 
     results = get_tests("/root")
@@ -137,7 +143,7 @@ def test_get_tests_with_pattern(mock_get_test, mock_walk, mock_isdir, mock_exist
     ]
 
     mock_get_test.side_effect = [
-        TestFile(suite="Special Suite", tests=["t1"], release={}, file_path="/root/special_test.yaml")
+        TestFile(suite="Special Suite", tests=["t1"], release=None, file_path="/root/special_test.yaml")
     ]
 
     # Only match files containing "special"
@@ -145,7 +151,43 @@ def test_get_tests_with_pattern(mock_get_test, mock_walk, mock_isdir, mock_exist
 
     assert len(results) == 1
     assert results[0].suite == "Special Suite"
-    mock_get_test.assert_called_once_with("/root/special_test.yaml")
+    mock_get_test.assert_called_once_with("/root/special_test.yaml", include_release=False)
+
+
+@patch("os.path.exists")
+@patch("os.path.isdir")
+@patch("os.walk")
+@patch("tools.get_tests.get_test_from_file")
+def test_get_tests_filtering_and_pagination(mock_get_test, mock_walk, mock_isdir, mock_exists):
+    mock_exists.return_value = True
+    mock_isdir.return_value = True
+    mock_walk.return_value = [
+        ("/root", [], ["t1.yaml", "t2.yaml", "t3.yaml"])
+    ]
+
+    mock_get_test.side_effect = [
+        TestFile(suite="Deployment Suite", tests=["t1"], file_path="/root/t1.yaml"),
+        TestFile(suite="Service Suite", tests=["t2"], file_path="/root/t2.yaml"),
+        TestFile(suite="Deployment Ingress Suite", tests=["t3"], file_path="/root/t3.yaml"),
+    ]
+
+    # Filter by suite pattern
+    deploy_results = get_tests("/root", suite_pattern="Deployment.*")
+    assert len(deploy_results) == 2
+    assert deploy_results[0].suite == "Deployment Suite"
+    assert deploy_results[1].suite == "Deployment Ingress Suite"
+
+    # Reset mock for pagination test
+    mock_get_test.side_effect = [
+        TestFile(suite="S1", tests=["t1"], file_path="/root/t1.yaml"),
+        TestFile(suite="S2", tests=["t2"], file_path="/root/t2.yaml"),
+        TestFile(suite="S3", tests=["t3"], file_path="/root/t3.yaml"),
+    ]
+
+    # Pagination: offset=1, limit=1
+    paginated = get_tests("/root", offset=1, limit=1)
+    assert len(paginated) == 1
+    assert paginated[0].suite == "S2"
 
 
 @patch("os.path.exists")
@@ -172,6 +214,9 @@ def test_get_tests_invalid_pattern(mock_isdir, mock_exists):
     with pytest.raises(ValueError, match="Invalid regex pattern"):
         get_tests("/root", pattern="[invalid")
 
+    with pytest.raises(ValueError, match="Invalid suite regex pattern"):
+        get_tests("/root", suite_pattern="[invalid")
+
 
 @patch("os.path.exists")
 @patch("os.path.isdir")
@@ -185,10 +230,10 @@ def test_get_tests_resilience(mock_get_test, mock_walk, mock_isdir, mock_exists)
         ("/root", [], ["good.yaml", "bad.yaml", "another_good.yaml"])
     ]
 
-    def side_effect(path):
+    def side_effect(path, include_release=False):
         if "bad" in path:
             raise ValueError("Bad file")
-        return TestFile(suite=f"Suite {path}", tests=["t"], release={}, file_path=path)
+        return TestFile(suite=f"Suite {path}", tests=["t"], release=None, file_path=path)
 
     mock_get_test.side_effect = side_effect
 
@@ -198,3 +243,4 @@ def test_get_tests_resilience(mock_get_test, mock_walk, mock_isdir, mock_exists)
     assert results[0].file_path == "/root/good.yaml"
     assert results[1].file_path == "/root/another_good.yaml"
     assert mock_get_test.call_count == 3
+
