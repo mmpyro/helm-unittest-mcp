@@ -96,7 +96,6 @@ class TestGetTestFromFileIntegration:
         # Verify we successfully parsed files
         assert len(parsed_files) > 0
 
-
     def test_parse_nonexistent_file(self):
         """Test that parsing a nonexistent file raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError) as exc_info:
@@ -106,6 +105,7 @@ class TestGetTestFromFileIntegration:
     def test_parse_invalid_yaml_file(self, temp_test_dir):
         """Test that parsing an invalid YAML file raises yaml.YAMLError."""
         import yaml
+
         # Create an invalid YAML file
         invalid_file = os.path.join(temp_test_dir, "invalid.yaml")
         with open(invalid_file, "w") as f:
@@ -272,7 +272,6 @@ class TestGetTestsIntegration:
 
 
 class TestGetTestsEdgeCases:
-
     """Integration tests for edge cases and special scenarios."""
 
     def test_empty_directory(self, temp_test_dir):
@@ -345,4 +344,3 @@ tests:
         assert result.release["namespace"] == "my-namespace"
         assert "values" in result.release
         assert "set" in result.release
-

@@ -10,7 +10,6 @@ from utils.mcp import Server
 from utils.dtos import ValidationResult, BatchValidationSummary
 
 
-
 mcp = Server().mcp
 schema_url = "https://raw.githubusercontent.com/helm-unittest/helm-unittest/refs/heads/main/schema/helm-testsuite.json"
 
@@ -63,36 +62,31 @@ def validate_schema(test_file_path: str) -> ValidationResult:
         if not test_file.exists():
             raise FileNotFoundError(f"Test file not found: {test_file_path}")
 
-        with open(test_file, 'r', encoding='utf-8') as f:
+        with open(test_file, "r", encoding="utf-8") as f:
             test_data = yaml.safe_load(f)
 
         # Validate the test data against the schema
         validate(instance=test_data, schema=schema)
 
         return ValidationResult(
-            success=True,
-            message=f"Validation successful for {test_file_path}"
+            success=True, message=f"Validation successful for {test_file_path}"
         )
 
     except FileNotFoundError as e:
-        return ValidationResult(
-            success=False,
-            message=str(e),
-            errors=[str(e)]
-        )
+        return ValidationResult(success=False, message=str(e), errors=[str(e)])
 
     except yaml.YAMLError as e:
         return ValidationResult(
             success=False,
             message=f"Invalid YAML syntax in {test_file_path}",
-            errors=[f"YAML parsing error: {str(e)}"]
+            errors=[f"YAML parsing error: {str(e)}"],
         )
 
     except requests.RequestException as e:
         return ValidationResult(
             success=False,
             message=f"Failed to fetch schema from {schema_url}",
-            errors=[f"Network error: {str(e)}"]
+            errors=[f"Network error: {str(e)}"],
         )
 
     except ValidationError as e:
@@ -101,14 +95,14 @@ def validate_schema(test_file_path: str) -> ValidationResult:
             message=f"Schema validation failed for {test_file_path}",
             errors=[
                 f"Validation error at {'.'.join(str(p) for p in e.path)}: {e.message}"
-            ]
+            ],
         )
 
     except Exception as e:
         return ValidationResult(
             success=False,
             message="Unexpected error during validation",
-            errors=[f"Error: {str(e)}"]
+            errors=[f"Error: {str(e)}"],
         )
 
 
@@ -192,7 +186,7 @@ def validate_tests(
                         ValidationResult(
                             success=False,
                             message=f"Unexpected error validating {file_path}",
-                            errors=[f"Error: {str(e)}"]
+                            errors=[f"Error: {str(e)}"],
                         )
                     )
 
@@ -209,4 +203,3 @@ def validate_tests(
         return [r for r in validation_results if not r.success]
 
     return validation_results
-

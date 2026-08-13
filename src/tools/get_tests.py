@@ -16,6 +16,7 @@ class _DuplicateAnchorSafeLoader(yaml.SafeLoader):
     overwrites the previous anchor, matching YAML 1.2 semantics where
     the last definition of an anchor wins.
     """
+
     pass
 
 
@@ -139,9 +140,7 @@ def get_tests(
 
 
 @mcp.tool()
-def get_test_from_file(
-    test_file_path: str, include_release: bool = False
-) -> TestFile:
+def get_test_from_file(test_file_path: str, include_release: bool = False) -> TestFile:
     """Get the helm unittests from the specified file.
 
     Args:
@@ -164,11 +163,13 @@ def get_test_from_file(
         raise ValueError("test_file_path cannot be empty")
 
     if not isinstance(test_file_path, str):
-        raise TypeError(f"test_file_path must be a string, got {type(test_file_path).__name__}")
+        raise TypeError(
+            f"test_file_path must be a string, got {type(test_file_path).__name__}"
+        )
 
     # Read and parse the file
     try:
-        with open(test_file_path, 'r') as f:
+        with open(test_file_path, "r") as f:
             tests = yaml.load(f, Loader=_DuplicateAnchorSafeLoader)
     except FileNotFoundError:
         raise FileNotFoundError(
@@ -186,9 +187,7 @@ def get_test_from_file(
             "Please ensure the file contains valid YAML."
         )
     except Exception as e:
-        raise IOError(
-            f"Unexpected error reading test file {test_file_path}: {e}"
-        )
+        raise IOError(f"Unexpected error reading test file {test_file_path}: {e}")
 
     # Validate parsed content
     if tests is None:
@@ -203,7 +202,7 @@ def get_test_from_file(
         )
 
     # Validate required fields
-    required_fields = ['suite', 'tests']
+    required_fields = ["suite", "tests"]
     missing_fields = [field for field in required_fields if field not in tests]
 
     if missing_fields:
@@ -213,7 +212,7 @@ def get_test_from_file(
         )
 
     # Validate field types
-    suite = tests['suite']
+    suite = tests["suite"]
     if not isinstance(suite, str):
         raise TypeError(
             f"Field 'suite' must be a string in {test_file_path}, "
@@ -221,11 +220,9 @@ def get_test_from_file(
         )
 
     if not suite.strip():
-        raise ValueError(
-            f"Field 'suite' cannot be empty in {test_file_path}"
-        )
+        raise ValueError(f"Field 'suite' cannot be empty in {test_file_path}")
 
-    test_list = tests['tests']
+    test_list = tests["tests"]
     if not isinstance(test_list, list):
         raise TypeError(
             f"Field 'tests' must be a list in {test_file_path}, "
@@ -233,22 +230,17 @@ def get_test_from_file(
         )
 
     if not test_list:
-        raise ValueError(
-            f"Field 'tests' cannot be an empty list in {test_file_path}"
-        )
+        raise ValueError(f"Field 'tests' cannot be an empty list in {test_file_path}")
 
-    release = tests.get('release', {}) if include_release else None
+    release = tests.get("release", {}) if include_release else None
 
     # Create and return TestFile object
     try:
         return TestFile(
             suite=suite,
-            tests=[x.get('it').strip() for x in test_list],
+            tests=[x.get("it").strip() for x in test_list],
             file_path=test_file_path,
             release=release,
         )
     except Exception as e:
-        raise ValueError(
-            f"Failed to create TestFile object from {test_file_path}: {e}"
-        )
-
+        raise ValueError(f"Failed to create TestFile object from {test_file_path}: {e}")

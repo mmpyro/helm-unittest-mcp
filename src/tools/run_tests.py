@@ -29,7 +29,17 @@ def _run_unittest_internal(
         os.close(fd)
         is_temp = True
 
-    cmd = ["helm", "unittest", "-f", test_suite_files, chart_path, "-t", output_type, "-o", output_file]
+    cmd = [
+        "helm",
+        "unittest",
+        "-f",
+        test_suite_files,
+        chart_path,
+        "-t",
+        output_type,
+        "-o",
+        output_file,
+    ]
     if update_snapshot:
         cmd.append("-u")
 
@@ -54,9 +64,16 @@ def _run_unittest_internal(
                     continue
 
             message = tc.message
-            if message and max_message_length is not None and max_message_length >= 0 and len(message) > max_message_length:
+            if (
+                message
+                and max_message_length is not None
+                and max_message_length >= 0
+                and len(message) > max_message_length
+            ):
                 overflow = len(message) - max_message_length
-                message = message[:max_message_length] + f"\n... [truncated {overflow} chars]"
+                message = (
+                    message[:max_message_length] + f"\n... [truncated {overflow} chars]"
+                )
 
             tc.message = message
             filtered_cases.append(tc)
@@ -150,4 +167,3 @@ def update_snapshot(
         include_test_cases=include_test_cases,
         max_message_length=max_message_length,
     )
-

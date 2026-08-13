@@ -49,7 +49,7 @@ class TestRunTestsIntegration:
         result_default = run_unittest(
             test_suite_files="tests/*/*.yaml",
             chart_path=chart_path,
-            output_type="xunit"
+            output_type="xunit",
         )
 
         assert isinstance(result_default, TestResultSummary)
@@ -81,7 +81,10 @@ class TestRunTestsIntegration:
 
         assert result.total == 1
         assert result.passed == 1
-        assert result.test_cases[0].name == "should render release-name-example ingress object"
+        assert (
+            result.test_cases[0].name
+            == "should render release-name-example ingress object"
+        )
 
     def test_run_unittest_with_values(self, chart_path):
         """Test running tests with an additional values file."""
@@ -90,7 +93,9 @@ class TestRunTestsIntegration:
         result = run_unittest(
             test_suite_files="tests/service/*.yaml",
             chart_path=chart_path,
-            values_path=["values.yaml"]  # Using the chart's own values.yaml as an extra values file
+            values_path=[
+                "values.yaml"
+            ],  # Using the chart's own values.yaml as an extra values file
         )
 
         assert result.total == 1
@@ -108,7 +113,6 @@ class TestRunTestsIntegration:
             assert result.passed >= 1
             assert len(result.test_cases) >= 1
 
-
     def test_update_snapshot_functionality(self, temp_chart):
         """Test update_snapshot tool (using a temporary copy of the chart)."""
         # First, ensure no snapshots exist
@@ -118,8 +122,7 @@ class TestRunTestsIntegration:
 
         # Run update snapshot
         result = update_snapshot(
-            test_suite_files="tests/deployment/*.yaml",
-            chart_path=temp_chart
+            test_suite_files="tests/deployment/*.yaml", chart_path=temp_chart
         )
 
         # TestResultSummary doesn't have success attr normally, but its presence means it ran
@@ -129,8 +132,7 @@ class TestRunTestsIntegration:
         """Test running tests on a nonexistent chart path."""
         # helm unittest creates an empty valid report even when chart is missing
         result = run_unittest(
-            test_suite_files="tests/*.yaml",
-            chart_path="/nonexistent/path"
+            test_suite_files="tests/*.yaml", chart_path="/nonexistent/path"
         )
 
         assert isinstance(result, TestResultSummary)
@@ -141,8 +143,7 @@ class TestRunTestsIntegration:
         """Test running with a glob that matches no files."""
         # helm unittest will fail if it finds no test files
         result = run_unittest(
-            test_suite_files="nonexistent/*.yaml",
-            chart_path=chart_path
+            test_suite_files="nonexistent/*.yaml", chart_path=chart_path
         )
 
         # It should return a summary with 0 tests

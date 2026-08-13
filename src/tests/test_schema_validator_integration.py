@@ -85,13 +85,16 @@ class TestSchemaValidatorIntegration:
 
         for file_path in example_files:
             result = validate_schema(file_path)
-            assert result.success is True, f"Validation failed for {file_path}: {result.message}"
+            assert result.success is True, (
+                f"Validation failed for {file_path}: {result.message}"
+            )
 
     def test_validate_tests_recursive(self, example_dir):
         """Test recursive validation of all example test files."""
         results = validate_tests(example_dir)
 
         # We expect 5 files to be validated (one in each subdirectory)
+        assert isinstance(results, list)
         assert len(results) == 5
 
         # All of them should be successful
@@ -105,6 +108,7 @@ class TestSchemaValidatorIntegration:
         # Only match deployment tests
         results = validate_tests(example_dir, pattern=r".*deployment.*\.yaml$")
 
+        assert isinstance(results, list)
         assert len(results) == 1
         assert results[0].success is True
         assert "deployment_example_test.yaml" in results[0].message
@@ -126,7 +130,6 @@ class TestSchemaValidatorIntegration:
 
 
 class TestSchemaValidatorEdgeCases:
-
     """Integration tests for edge cases and error handling."""
 
     def test_validate_nonexistent_file(self):

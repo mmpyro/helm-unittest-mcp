@@ -21,6 +21,7 @@ class ValidationResult:
         errors (list[str] | None): List of validation error messages
                                    if validation passed, None otherwise
     """
+
     success: bool
     message: str
     errors: list[str] | None = None
@@ -36,11 +37,11 @@ class BatchValidationSummary:
         invalid_files (int): Number of invalid test files
         failures (list[ValidationResult]): Validation results for failed files only
     """
+
     total_files: int
     valid_files: int
     invalid_files: int
     failures: list[ValidationResult]
-
 
 
 @dataclass
@@ -85,4 +86,3 @@ class TestResultSummary:
     time: float
     test_cases: list[TestCaseResult]
     elapsed_time: Optional[float] = None
-

@@ -174,9 +174,7 @@ def run_tests_parallel(
 
     suite_summaries: list[TestResultSummary] = []
 
-    with concurrent.futures.ThreadPoolExecutor(
-        max_workers=max_workers
-    ) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_suite = {
             executor.submit(
                 _run_suite,

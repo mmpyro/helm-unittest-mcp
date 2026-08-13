@@ -9,9 +9,7 @@ from utils.dtos import ValidationResult
 MOCK_SCHEMA = {
     "type": "object",
     "required": ["suite"],
-    "properties": {
-        "suite": {"type": "string"}
-    }
+    "properties": {"suite": {"type": "string"}},
 }
 
 VALID_YAML = """
@@ -129,17 +127,16 @@ def test_validate_schema_validation_error(mock_file, mock_exists, mock_get_schem
 def test_validate_tests_success(mock_validate, mock_walk, mock_isdir, mock_exists):
     mock_exists.return_value = True
     mock_isdir.return_value = True
-    mock_walk.return_value = [
-        ("/root", [], ["test1.yaml", "test2.yaml", "readme.md"])
-    ]
+    mock_walk.return_value = [("/root", [], ["test1.yaml", "test2.yaml", "readme.md"])]
 
     mock_validate.side_effect = [
         ValidationResult(success=True, message="OK"),
-        ValidationResult(success=False, message="Fail", errors=["Err"])
+        ValidationResult(success=False, message="Fail", errors=["Err"]),
     ]
 
     results = validate_tests("/root")
 
+    assert isinstance(results, list)
     assert len(results) == 2
     assert results[0].success is True
     assert results[1].success is False
@@ -155,9 +152,7 @@ def test_validate_tests_options(mock_validate, mock_walk, mock_isdir, mock_exist
 
     mock_exists.return_value = True
     mock_isdir.return_value = True
-    mock_walk.return_value = [
-        ("/root", [], ["valid.yaml", "invalid.yaml"])
-    ]
+    mock_walk.return_value = [("/root", [], ["valid.yaml", "invalid.yaml"])]
 
     mock_validate.side_effect = [
         ValidationResult(success=True, message="OK"),
@@ -166,6 +161,7 @@ def test_validate_tests_options(mock_validate, mock_walk, mock_isdir, mock_exist
 
     # Test only_failures=True
     failed_results = validate_tests("/root", only_failures=True)
+    assert isinstance(failed_results, list)
     assert len(failed_results) == 1
     assert failed_results[0].success is False
 
@@ -199,7 +195,9 @@ def test_validate_tests_invalid_dir(mock_isdir, mock_exists):
 
 
 def test_validate_tests_invalid_pattern():
-    with patch("os.path.exists", return_value=True), \
-         patch("os.path.isdir", return_value=True):
+    with (
+        patch("os.path.exists", return_value=True),
+        patch("os.path.isdir", return_value=True),
+    ):
         with pytest.raises(ValueError, match="Invalid regex pattern"):
             validate_tests("/root", pattern="[invalid")

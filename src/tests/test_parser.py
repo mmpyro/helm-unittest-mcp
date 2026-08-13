@@ -83,7 +83,10 @@ def test_parse_junit_string():
     assert result.test_cases[0].result == "passed"
     assert result.test_cases[1].result == "failed"
     assert result.test_cases[1].message is not None
-    assert "Assertion failed\nDetails with\n                indentation" == result.test_cases[1].message
+    assert (
+        "Assertion failed\nDetails with\n                indentation"
+        == result.test_cases[1].message
+    )
     assert result.test_cases[2].result == "skipped"
     assert "Ignored\nSkip Reason" == result.test_cases[2].message
 
@@ -117,7 +120,10 @@ def test_parse_xunit_string():
     assert result.failed == 1
     assert result.time == 1.2
     assert result.test_cases[1].result == "failed"
-    assert "Error found\nLine 10: expected true but was false" == result.test_cases[1].message
+    assert (
+        "Error found\nLine 10: expected true but was false"
+        == result.test_cases[1].message
+    )
 
 
 def test_parse_nunit_string():
