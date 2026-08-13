@@ -85,13 +85,16 @@ class TestSchemaValidatorIntegration:
 
         for file_path in example_files:
             result = validate_schema(file_path)
-            assert result.success is True, f"Validation failed for {file_path}: {result.message}"
+            assert result.success is True, (
+                f"Validation failed for {file_path}: {result.message}"
+            )
 
     def test_validate_tests_recursive(self, example_dir):
         """Test recursive validation of all example test files."""
         results = validate_tests(example_dir)
 
         # We expect 5 files to be validated (one in each subdirectory)
+        assert isinstance(results, list)
         assert len(results) == 5
 
         # All of them should be successful
@@ -105,9 +108,25 @@ class TestSchemaValidatorIntegration:
         # Only match deployment tests
         results = validate_tests(example_dir, pattern=r".*deployment.*\.yaml$")
 
+        assert isinstance(results, list)
         assert len(results) == 1
         assert results[0].success is True
         assert "deployment_example_test.yaml" in results[0].message
+
+    def test_validate_tests_options_integration(self, example_dir):
+        """Test validate_tests with return_summary=True and only_failures=True."""
+        from utils.dtos import BatchValidationSummary
+
+        summary = validate_tests(example_dir, return_summary=True)
+        assert isinstance(summary, BatchValidationSummary)
+        assert summary.total_files == 5
+        assert summary.valid_files == 5
+        assert summary.invalid_files == 0
+        assert len(summary.failures) == 0
+
+        only_failures = validate_tests(example_dir, only_failures=True)
+        assert isinstance(only_failures, list)
+        assert len(only_failures) == 0
 
 
 class TestSchemaValidatorEdgeCases:

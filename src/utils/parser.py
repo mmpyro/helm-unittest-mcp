@@ -49,7 +49,7 @@ class TestResultParser(object):
         is_file = False
         stripped_result = test_result.strip()
 
-        if not stripped_result.startswith('<'):
+        if not stripped_result.startswith("<"):
             try:
                 # Path names have a limit, avoids OSError: [Errno 63] File name too long
                 if len(test_result) < 4096:
@@ -64,15 +64,16 @@ class TestResultParser(object):
             return tree.getroot()
 
         # If it looks like XML, try to parse it from string
-        if stripped_result.startswith('<'):
+        if stripped_result.startswith("<"):
             return ET.fromstring(test_result)
 
         # If it's not a file and doesn't explicitly look like XML,
         # we need to decide if it's a missing file or an invalid XML string.
         # If it's a single line and looks like a path, assume FileNotFoundError.
-        is_likely_path = (
-            '\n' not in test_result and
-            ('/' in test_result or '\\' in test_result or test_result.lower().endswith('.xml'))
+        is_likely_path = "\n" not in test_result and (
+            "/" in test_result
+            or "\\" in test_result
+            or test_result.lower().endswith(".xml")
         )
         if is_likely_path:
             raise FileNotFoundError(f"File not found: {test_result}")
@@ -105,14 +106,18 @@ class TestResultParser(object):
         test_cases = []
 
         # NUnit 2.x style
-        if root.tag == 'test-results':
-            total_tests = int(root.get('total', 0))
-            total_errors = int(root.get('errors', 0))
-            total_failed = int(root.get('failures', 0))
-            total_skipped = int(root.get('skipped', 0)) + int(root.get('ignored', 0)) + int(root.get('not-run', 0))
+        if root.tag == "test-results":
+            total_tests = int(root.get("total", 0))
+            total_errors = int(root.get("errors", 0))
+            total_failed = int(root.get("failures", 0))
+            total_skipped = (
+                int(root.get("skipped", 0))
+                + int(root.get("ignored", 0))
+                + int(root.get("not-run", 0))
+            )
 
             # Handle time - it might be a duration or a timestamp
-            time_val = root.get('time', '0')
+            time_val = root.get("time", "0")
             try:
                 total_time = float(time_val)
             except ValueError:
@@ -123,11 +128,11 @@ class TestResultParser(object):
 
             # Find all test cases recursively
             suites_sum_time = 0.0
-            for suite in root.findall('.//test-suite'):
-                suite_name = suite.get('name', 'Unknown')
+            for suite in root.findall(".//test-suite"):
+                suite_name = suite.get("name", "Unknown")
 
                 # Update total time from top-level suites if root time was invalid
-                suite_time_attr = suite.get('time')
+                suite_time_attr = suite.get("time")
                 if suite_time_attr:
                     try:
                         suites_sum_time += float(suite_time_attr)
@@ -135,32 +140,45 @@ class TestResultParser(object):
                         pass
 
                 # Check for test-cases inside this suite's results
-                results = suite.find('results')
+                results = suite.find("results")
                 if results is not None:
-                    for tc in results.findall('test-case'):
-                        tc_name = tc.get('name', 'Unknown')
-                        tc_time = float(tc.get('time', 0.0))
-                        tc_result = tc.get('result', 'Unknown')
+                    for tc in results.findall("test-case"):
+                        tc_name = tc.get("name", "Unknown")
+                        tc_time = float(tc.get("time", 0.0))
+                        tc_result = tc.get("result", "Unknown")
 
                         # Normalize result string
                         normalized_result = tc_result.lower()
-                        if "success" in normalized_result or "pass" in normalized_result:
+                        if (
+                            "success" in normalized_result
+                            or "pass" in normalized_result
+                        ):
                             normalized_result = "passed"
                         elif "fail" in normalized_result:
                             normalized_result = "failed"
                         elif "error" in normalized_result:
                             normalized_result = "error"
-                        elif "skip" in normalized_result or "ignore" in normalized_result:
+                        elif (
+                            "skip" in normalized_result or "ignore" in normalized_result
+                        ):
                             normalized_result = "skipped"
 
                         tc_message = None
-                        failure = tc.find('failure')
+                        failure = tc.find("failure")
                         if failure is not None:
-                            message_elem = failure.find('message')
-                            stack_trace_elem = failure.find('stack-trace')
+                            message_elem = failure.find("message")
+                            stack_trace_elem = failure.find("stack-trace")
 
-                            msg = (message_elem.text or "").strip() if message_elem is not None else ""
-                            stack = (stack_trace_elem.text or "") if stack_trace_elem is not None else ""
+                            msg = (
+                                (message_elem.text or "").strip()
+                                if message_elem is not None
+                                else ""
+                            )
+                            stack = (
+                                (stack_trace_elem.text or "")
+                                if stack_trace_elem is not None
+                                else ""
+                            )
 
                             if msg and stack:
                                 tc_message = f"{msg}\n{stack}"
@@ -173,7 +191,7 @@ class TestResultParser(object):
                                 suite=suite_name,
                                 result=normalized_result,
                                 time=tc_time,
-                                message=tc_message.strip() if tc_message else None
+                                message=tc_message.strip() if tc_message else None,
                             )
                         )
 
@@ -191,7 +209,7 @@ class TestResultParser(object):
             skipped=total_skipped,
             errors=total_errors,
             time=total_time,
-            test_cases=test_cases
+            test_cases=test_cases,
         )
 
     def _parse_junit(self, test_result: str) -> TestResultSummary:
@@ -220,41 +238,41 @@ class TestResultParser(object):
 
         # JUnit can have <testsuites> as root or <testsuite>
         suites = []
-        if root.tag == 'testsuites':
-            suites = root.findall('testsuite')
+        if root.tag == "testsuites":
+            suites = root.findall("testsuite")
             # Try to get total time from root if available
-            root_time = root.get('time')
+            root_time = root.get("time")
             if root_time:
                 total_time = float(root_time)
-        elif root.tag == 'testsuite':
+        elif root.tag == "testsuite":
             suites = [root]
         else:
             # Fallback for some non-standard roots that might contain testsuites
-            suites = root.findall('.//testsuite')
+            suites = root.findall(".//testsuite")
 
         for suite in suites:
-            suite_name = suite.get('name', 'Unknown')
+            suite_name = suite.get("name", "Unknown")
 
             # If we don't have total time from root, sum it up from suites
-            if root.tag != 'testsuites' or not root.get('time'):
-                suite_time = suite.get('time')
+            if root.tag != "testsuites" or not root.get("time"):
+                suite_time = suite.get("time")
                 if suite_time:
                     total_time += float(suite_time)
 
-            for tc in suite.findall('.//testcase'):
-                tc_name = tc.get('name', 'Unknown')
-                tc_time = float(tc.get('time', 0.0))
+            for tc in suite.findall(".//testcase"):
+                tc_name = tc.get("name", "Unknown")
+                tc_time = float(tc.get("time", 0.0))
                 tc_result = "passed"
                 tc_message = None
 
                 # Check for failure/error/skipped
-                failure = tc.find('failure')
-                error = tc.find('error')
-                skipped = tc.find('skipped')
+                failure = tc.find("failure")
+                error = tc.find("error")
+                skipped = tc.find("skipped")
 
                 if failure is not None:
                     tc_result = "failed"
-                    msg_attr = failure.get('message')
+                    msg_attr = failure.get("message")
                     msg_text = failure.text
                     if msg_attr and msg_text:
                         tc_message = f"{msg_attr}\n{msg_text}"
@@ -263,7 +281,7 @@ class TestResultParser(object):
                     total_failed += 1
                 elif error is not None:
                     tc_result = "error"
-                    msg_attr = error.get('message')
+                    msg_attr = error.get("message")
                     msg_text = error.text
                     if msg_attr and msg_text:
                         tc_message = f"{msg_attr}\n{msg_text}"
@@ -272,7 +290,7 @@ class TestResultParser(object):
                     total_errors += 1
                 elif skipped is not None:
                     tc_result = "skipped"
-                    msg_attr = skipped.get('message')
+                    msg_attr = skipped.get("message")
                     msg_text = skipped.text
                     if msg_attr and msg_text:
                         tc_message = f"{msg_attr}\n{msg_text}"
@@ -290,7 +308,7 @@ class TestResultParser(object):
                         suite=suite_name,
                         result=tc_result,
                         time=tc_time,
-                        message=tc_message.strip() if tc_message else None
+                        message=tc_message.strip() if tc_message else None,
                     )
                 )
 
@@ -301,7 +319,7 @@ class TestResultParser(object):
             skipped=total_skipped,
             errors=total_errors,
             time=total_time,
-            test_cases=test_cases
+            test_cases=test_cases,
         )
 
     def _parse_xunit(self, test_result: str) -> TestResultSummary:
@@ -329,24 +347,24 @@ class TestResultParser(object):
         test_cases = []
 
         # Parse all assemblies (test suites)
-        for assembly in root.findall('.//assembly'):
+        for assembly in root.findall(".//assembly"):
             # Get assembly-level statistics
-            total_tests += int(assembly.get('total', 0))
-            total_passed += int(assembly.get('passed', 0))
-            total_failed += int(assembly.get('failed', 0))
-            total_skipped += int(assembly.get('skipped', 0))
-            total_errors += int(assembly.get('errors', 0))
-            total_time += float(assembly.get('time', 0.0))
+            total_tests += int(assembly.get("total", 0))
+            total_passed += int(assembly.get("passed", 0))
+            total_failed += int(assembly.get("failed", 0))
+            total_skipped += int(assembly.get("skipped", 0))
+            total_errors += int(assembly.get("errors", 0))
+            total_time += float(assembly.get("time", 0.0))
 
             # Parse collections (test groups within assembly)
-            for collection in assembly.findall('.//collection'):
-                collection_name = collection.get('name', 'Unknown Collection')
+            for collection in assembly.findall(".//collection"):
+                collection_name = collection.get("name", "Unknown Collection")
 
                 # Parse individual test cases
-                for test in collection.findall('.//test'):
-                    test_name = test.get('name', 'Unknown Test')
-                    test_result_status = test.get('result', 'Unknown')
-                    test_time = float(test.get('time', 0.0))
+                for test in collection.findall(".//test"):
+                    test_name = test.get("name", "Unknown Test")
+                    test_result_status = test.get("result", "Unknown")
+                    test_time = float(test.get("time", 0.0))
 
                     # Normalize result status to lowercase
                     normalized_result = test_result_status.lower()
@@ -359,13 +377,21 @@ class TestResultParser(object):
 
                     # Check for failure message
                     failure_message = None
-                    failure_elem = test.find('.//failure')
+                    failure_elem = test.find(".//failure")
                     if failure_elem is not None:
-                        message_elem = failure_elem.find('message')
-                        stack_trace_elem = failure_elem.find('stack-trace')
+                        message_elem = failure_elem.find("message")
+                        stack_trace_elem = failure_elem.find("stack-trace")
 
-                        msg = (message_elem.text or "").strip() if message_elem is not None else ""
-                        stack = (stack_trace_elem.text or "") if stack_trace_elem is not None else ""
+                        msg = (
+                            (message_elem.text or "").strip()
+                            if message_elem is not None
+                            else ""
+                        )
+                        stack = (
+                            (stack_trace_elem.text or "")
+                            if stack_trace_elem is not None
+                            else ""
+                        )
 
                         if msg and stack:
                             failure_message = f"{msg}\n{stack}"
@@ -378,7 +404,9 @@ class TestResultParser(object):
                             suite=collection_name,
                             result=normalized_result,
                             time=test_time,
-                            message=failure_message.strip() if failure_message else None
+                            message=failure_message.strip()
+                            if failure_message
+                            else None,
                         )
                     )
 
@@ -389,5 +417,5 @@ class TestResultParser(object):
             skipped=total_skipped,
             errors=total_errors,
             time=total_time,
-            test_cases=test_cases
+            test_cases=test_cases,
         )

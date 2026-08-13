@@ -83,7 +83,10 @@ class TestJUnitParserIntegration:
         assert "should render release-name-example ingress object" in test_names
         assert "should render release-name-example service object" in test_names
         assert "should render release-name-example service account object" in test_names
-        assert "should use release-name-example service account into deployment" in test_names
+        assert (
+            "should use release-name-example service account into deployment"
+            in test_names
+        )
 
         # Verify all test cases have passed status
         for test_case in result.test_cases:
@@ -94,7 +97,7 @@ class TestJUnitParserIntegration:
     def test_parse_junit_report_string(self, junit_report_path):
         """Test parsing JUnit report from XML string content."""
         # Read the file content
-        with open(junit_report_path, 'r') as f:
+        with open(junit_report_path, "r") as f:
             xml_content = f.read()
 
         parser = TestResultParser("junit")
@@ -115,7 +118,7 @@ class TestJUnitParserIntegration:
         suite_names = set()
         for test_case in result.test_cases:
             # Suite name is in the classname attribute
-            if hasattr(test_case, 'suite'):
+            if hasattr(test_case, "suite"):
                 suite_names.add(test_case.suite)
 
         # We should have tests from multiple suites
@@ -160,7 +163,10 @@ class TestXUnitParserIntegration:
         # Verify specific test cases
         test_names = [tc.name for tc in result.test_cases]
         assert "should render release-name-example deployment object" in test_names
-        assert "should render release-name-example horizontal pod autoscaler object" in test_names
+        assert (
+            "should render release-name-example horizontal pod autoscaler object"
+            in test_names
+        )
         assert "should render release-name-example ingress object" in test_names
 
         # Verify all test cases have passed status
@@ -171,7 +177,7 @@ class TestXUnitParserIntegration:
     def test_parse_xunit_report_string(self, xunit_report_path):
         """Test parsing xUnit report from XML string content."""
         # Read the file content
-        with open(xunit_report_path, 'r') as f:
+        with open(xunit_report_path, "r") as f:
             xml_content = f.read()
 
         parser = TestResultParser("xunit")
@@ -234,7 +240,10 @@ class TestNUnitParserIntegration:
         # Verify specific test cases
         test_names = [tc.name for tc in result.test_cases]
         assert "should render release-name-example deployment object" in test_names
-        assert "should render release-name-example horizontal pod autoscaler object" in test_names
+        assert (
+            "should render release-name-example horizontal pod autoscaler object"
+            in test_names
+        )
         assert "should render release-name-example ingress object" in test_names
         assert "should render release-name-example service object" in test_names
 
@@ -246,7 +255,7 @@ class TestNUnitParserIntegration:
     def test_parse_nunit_report_string(self, nunit_report_path):
         """Test parsing NUnit report from XML string content."""
         # Read the file content
-        with open(nunit_report_path, 'r') as f:
+        with open(nunit_report_path, "r") as f:
             xml_content = f.read()
 
         parser = TestResultParser("nunit")
@@ -302,7 +311,12 @@ class TestParserCrossFormatConsistency:
 
         # All formats should report the same total
         assert junit_result.total == xunit_result.total == nunit_result.total == 6
-        assert len(junit_result.test_cases) == len(xunit_result.test_cases) == len(nunit_result.test_cases) == 6
+        assert (
+            len(junit_result.test_cases)
+            == len(xunit_result.test_cases)
+            == len(nunit_result.test_cases)
+            == 6
+        )
 
     def test_all_formats_report_same_results(
         self, junit_report_path, xunit_report_path, nunit_report_path
@@ -416,7 +430,7 @@ class TestParserRealWorldScenarios:
     def test_verify_helm_unittest_metadata(self, junit_report_path):
         """Test that helm-unittest specific metadata is present in reports."""
         # Read the file to verify metadata
-        with open(junit_report_path, 'r') as f:
+        with open(junit_report_path, "r") as f:
             content = f.read()
 
         # Verify helm-unittest version is present
@@ -442,4 +456,6 @@ class TestParserRealWorldScenarios:
 
             # Individual test times should be reasonable
             for test_case in result.test_cases:
-                assert 0 <= test_case.time < 10  # No single test should take more than 10 seconds
+                assert (
+                    0 <= test_case.time < 10
+                )  # No single test should take more than 10 seconds

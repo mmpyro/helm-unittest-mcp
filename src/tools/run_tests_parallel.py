@@ -1,5 +1,6 @@
 import concurrent.futures
 import os
+import time
 from typing import Optional
 from collections import defaultdict
 from utils.mcp import Server
@@ -28,11 +29,15 @@ def _group_tests_by_suite(
     return dict(groups)
 
 
-def _merge_summaries(summaries: list[TestResultSummary]) -> TestResultSummary:
+def _merge_summaries(
+    summaries: list[TestResultSummary],
+    elapsed_time: Optional[float] = None,
+) -> TestResultSummary:
     """Merge multiple TestResultSummary objects into a single aggregate summary.
 
     Args:
         summaries: List of TestResultSummary objects to merge
+        elapsed_time: Optional wall-clock elapsed time in seconds
 
     Returns:
         A single TestResultSummary with aggregated totals and
@@ -63,6 +68,7 @@ def _merge_summaries(summaries: list[TestResultSummary]) -> TestResultSummary:
         errors=errors,
         time=time,
         test_cases=test_cases,
+        elapsed_time=elapsed_time,
     )
 
 
@@ -72,6 +78,8 @@ def _run_suite(
     values_path: list[str],
     output_type: str,
     update_snapshot: bool,
+    include_test_cases: str = "failed_only",
+    max_message_length: Optional[int] = 1000,
 ) -> TestResultSummary:
     """Run all test files for a single suite sequentially.
 
@@ -81,6 +89,8 @@ def _run_suite(
         values_path: Optional list of paths to values files
         output_type: Format of the test report
         update_snapshot: Whether to update snapshots
+        include_test_cases: Which test cases to include in results ("failed_only", "all", "none")
+        max_message_length: Maximum character length for failure messages
 
     Returns:
         Merged TestResultSummary for the entire suite
@@ -102,6 +112,8 @@ def _run_suite(
             values_path=values_path,
             output_type=output_type,
             update_snapshot=update_snapshot,
+            include_test_cases=include_test_cases,
+            max_message_length=max_message_length,
         )
         summaries.append(summary)
 
@@ -116,6 +128,8 @@ def run_tests_parallel(
     values_path: list[str] = [],
     output_type: str = "xunit",
     max_workers: Optional[int] = None,
+    include_test_cases: str = "failed_only",
+    max_message_length: Optional[int] = 1000,
 ) -> TestResultSummary:
     """Run helm unit tests in parallel, grouped by suite.
 
@@ -133,13 +147,18 @@ def run_tests_parallel(
         output_type: Format of the test report ("xunit", "junit", or "nunit")
         max_workers: Maximum number of parallel workers. If None, defaults
                      to ThreadPoolExecutor's default.
+        include_test_cases: Which test cases to include in test_cases list:
+                            "failed_only" (default), "all", or "none".
+        max_message_length: Maximum character length for failure messages.
 
     Returns:
         TestResultSummary: An aggregate summary of all test executions
     """
+    start_time = time.perf_counter()
     test_files = get_tests(dir_path, pattern)
 
     if not test_files:
+        elapsed_time = round(time.perf_counter() - start_time, 4)
         return TestResultSummary(
             total=0,
             passed=0,
@@ -148,15 +167,14 @@ def run_tests_parallel(
             errors=0,
             time=0.0,
             test_cases=[],
+            elapsed_time=elapsed_time,
         )
 
     suite_groups = _group_tests_by_suite(test_files)
 
     suite_summaries: list[TestResultSummary] = []
 
-    with concurrent.futures.ThreadPoolExecutor(
-        max_workers=max_workers
-    ) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_suite = {
             executor.submit(
                 _run_suite,
@@ -165,6 +183,8 @@ def run_tests_parallel(
                 values_path,
                 output_type,
                 False,
+                include_test_cases,
+                max_message_length,
             ): suite_name
             for suite_name, suite_files in suite_groups.items()
         }
@@ -196,4 +216,5 @@ def run_tests_parallel(
                     )
                 )
 
-    return _merge_summaries(suite_summaries)
+    elapsed_time = round(time.perf_counter() - start_time, 4)
+    return _merge_summaries(suite_summaries, elapsed_time=elapsed_time)

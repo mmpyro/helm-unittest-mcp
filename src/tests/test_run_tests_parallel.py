@@ -11,11 +11,16 @@ from utils.dtos import TestFile, TestResultSummary, TestCaseResult
 
 # --- _group_tests_by_suite tests ---
 
+
 class TestGroupTestsBySuite:
     def test_single_suite(self):
         files = [
-            TestFile(suite="Suite A", tests=["t1"], release={}, file_path="/a/test1.yaml"),
-            TestFile(suite="Suite A", tests=["t2"], release={}, file_path="/a/test2.yaml"),
+            TestFile(
+                suite="Suite A", tests=["t1"], release={}, file_path="/a/test1.yaml"
+            ),
+            TestFile(
+                suite="Suite A", tests=["t2"], release={}, file_path="/a/test2.yaml"
+            ),
         ]
         result = _group_tests_by_suite(files)
 
@@ -25,10 +30,18 @@ class TestGroupTestsBySuite:
 
     def test_multiple_suites(self):
         files = [
-            TestFile(suite="Suite A", tests=["t1"], release={}, file_path="/a/test1.yaml"),
-            TestFile(suite="Suite B", tests=["t2"], release={}, file_path="/b/test2.yaml"),
-            TestFile(suite="Suite A", tests=["t3"], release={}, file_path="/a/test3.yaml"),
-            TestFile(suite="Suite C", tests=["t4"], release={}, file_path="/c/test4.yaml"),
+            TestFile(
+                suite="Suite A", tests=["t1"], release={}, file_path="/a/test1.yaml"
+            ),
+            TestFile(
+                suite="Suite B", tests=["t2"], release={}, file_path="/b/test2.yaml"
+            ),
+            TestFile(
+                suite="Suite A", tests=["t3"], release={}, file_path="/a/test3.yaml"
+            ),
+            TestFile(
+                suite="Suite C", tests=["t4"], release={}, file_path="/c/test4.yaml"
+            ),
         ]
         result = _group_tests_by_suite(files)
 
@@ -43,9 +56,15 @@ class TestGroupTestsBySuite:
 
     def test_preserves_order_within_suite(self):
         files = [
-            TestFile(suite="Suite A", tests=["t1"], release={}, file_path="/a/first.yaml"),
-            TestFile(suite="Suite A", tests=["t2"], release={}, file_path="/a/second.yaml"),
-            TestFile(suite="Suite A", tests=["t3"], release={}, file_path="/a/third.yaml"),
+            TestFile(
+                suite="Suite A", tests=["t1"], release={}, file_path="/a/first.yaml"
+            ),
+            TestFile(
+                suite="Suite A", tests=["t2"], release={}, file_path="/a/second.yaml"
+            ),
+            TestFile(
+                suite="Suite A", tests=["t3"], release={}, file_path="/a/third.yaml"
+            ),
         ]
         result = _group_tests_by_suite(files)
 
@@ -55,25 +74,38 @@ class TestGroupTestsBySuite:
 
 # --- _merge_summaries tests ---
 
+
 class TestMergeSummaries:
     def test_merge_two_summaries(self):
         s1 = TestResultSummary(
-            total=3, passed=2, failed=1, skipped=0, errors=0, time=1.5,
+            total=3,
+            passed=2,
+            failed=1,
+            skipped=0,
+            errors=0,
+            time=1.5,
             test_cases=[
                 TestCaseResult(name="t1", suite="S1", result="Pass", time=0.5),
                 TestCaseResult(name="t2", suite="S1", result="Pass", time=0.5),
-                TestCaseResult(name="t3", suite="S1", result="Fail", time=0.5, message="err"),
+                TestCaseResult(
+                    name="t3", suite="S1", result="Fail", time=0.5, message="err"
+                ),
             ],
         )
         s2 = TestResultSummary(
-            total=2, passed=1, failed=0, skipped=1, errors=0, time=0.8,
+            total=2,
+            passed=1,
+            failed=0,
+            skipped=1,
+            errors=0,
+            time=0.8,
             test_cases=[
                 TestCaseResult(name="t4", suite="S2", result="Pass", time=0.4),
                 TestCaseResult(name="t5", suite="S2", result="Skip", time=0.4),
             ],
         )
 
-        merged = _merge_summaries([s1, s2])
+        merged = _merge_summaries([s1, s2], elapsed_time=1.234)
 
         assert merged.total == 5
         assert merged.passed == 3
@@ -81,9 +113,11 @@ class TestMergeSummaries:
         assert merged.skipped == 1
         assert merged.errors == 0
         assert merged.time == pytest.approx(2.3)
+        assert merged.elapsed_time == 1.234
         assert len(merged.test_cases) == 5
 
     def test_merge_empty_list(self):
+
         merged = _merge_summaries([])
 
         assert merged.total == 0
@@ -96,7 +130,12 @@ class TestMergeSummaries:
 
     def test_merge_single_summary(self):
         s = TestResultSummary(
-            total=1, passed=1, failed=0, skipped=0, errors=0, time=0.1,
+            total=1,
+            passed=1,
+            failed=0,
+            skipped=0,
+            errors=0,
+            time=0.1,
             test_cases=[TestCaseResult(name="t1", suite="S", result="Pass", time=0.1)],
         )
         merged = _merge_summaries([s])
@@ -107,10 +146,22 @@ class TestMergeSummaries:
 
     def test_merge_aggregates_errors(self):
         s1 = TestResultSummary(
-            total=1, passed=0, failed=0, skipped=0, errors=1, time=0.1, test_cases=[],
+            total=1,
+            passed=0,
+            failed=0,
+            skipped=0,
+            errors=1,
+            time=0.1,
+            test_cases=[],
         )
         s2 = TestResultSummary(
-            total=1, passed=0, failed=0, skipped=0, errors=1, time=0.2, test_cases=[],
+            total=1,
+            passed=0,
+            failed=0,
+            skipped=0,
+            errors=1,
+            time=0.2,
+            test_cases=[],
         )
         merged = _merge_summaries([s1, s2])
 
@@ -120,21 +171,40 @@ class TestMergeSummaries:
 
 # --- _run_suite tests ---
 
+
 class TestRunSuite:
     @patch("tools.run_tests_parallel._run_unittest_internal")
     def test_runs_files_sequentially(self, mock_internal):
         files = [
-            TestFile(suite="Suite A", tests=["t1"], release={}, file_path="/a/test1.yaml"),
-            TestFile(suite="Suite A", tests=["t2"], release={}, file_path="/a/test2.yaml"),
+            TestFile(
+                suite="Suite A", tests=["t1"], release={}, file_path="/a/test1.yaml"
+            ),
+            TestFile(
+                suite="Suite A", tests=["t2"], release={}, file_path="/a/test2.yaml"
+            ),
         ]
         mock_internal.side_effect = [
             TestResultSummary(
-                total=1, passed=1, failed=0, skipped=0, errors=0, time=0.5,
-                test_cases=[TestCaseResult(name="t1", suite="Suite A", result="Pass", time=0.5)],
+                total=1,
+                passed=1,
+                failed=0,
+                skipped=0,
+                errors=0,
+                time=0.5,
+                test_cases=[
+                    TestCaseResult(name="t1", suite="Suite A", result="Pass", time=0.5)
+                ],
             ),
             TestResultSummary(
-                total=1, passed=1, failed=0, skipped=0, errors=0, time=0.3,
-                test_cases=[TestCaseResult(name="t2", suite="Suite A", result="Pass", time=0.3)],
+                total=1,
+                passed=1,
+                failed=0,
+                skipped=0,
+                errors=0,
+                time=0.3,
+                test_cases=[
+                    TestCaseResult(name="t2", suite="Suite A", result="Pass", time=0.3)
+                ],
             ),
         ]
 
@@ -147,6 +217,8 @@ class TestRunSuite:
             values_path=["values.yaml"],
             output_type="xunit",
             update_snapshot=False,
+            include_test_cases="failed_only",
+            max_message_length=1000,
         )
         mock_internal.assert_any_call(
             test_suite_files="/a/test2.yaml",
@@ -154,6 +226,8 @@ class TestRunSuite:
             values_path=["values.yaml"],
             output_type="xunit",
             update_snapshot=False,
+            include_test_cases="failed_only",
+            max_message_length=1000,
         )
 
         assert result.total == 2
@@ -167,8 +241,15 @@ class TestRunSuite:
             TestFile(suite="Solo", tests=["t1"], release={}, file_path="/a/test.yaml"),
         ]
         mock_internal.return_value = TestResultSummary(
-            total=1, passed=1, failed=0, skipped=0, errors=0, time=0.2,
-            test_cases=[TestCaseResult(name="t1", suite="Solo", result="Pass", time=0.2)],
+            total=1,
+            passed=1,
+            failed=0,
+            skipped=0,
+            errors=0,
+            time=0.2,
+            test_cases=[
+                TestCaseResult(name="t1", suite="Solo", result="Pass", time=0.2)
+            ],
         )
 
         result = _run_suite(files, "./chart", [], "junit", True)
@@ -179,17 +260,31 @@ class TestRunSuite:
             values_path=[],
             output_type="junit",
             update_snapshot=True,
+            include_test_cases="failed_only",
+            max_message_length=1000,
         )
         assert result.total == 1
 
     @patch("tools.run_tests_parallel._run_unittest_internal")
     def test_converts_abs_path_to_rel_path(self, mock_internal):
         files = [
-            TestFile(suite="Rel", tests=["t1"], release={}, file_path="/chart/tests/sub/test.yaml"),
+            TestFile(
+                suite="Rel",
+                tests=["t1"],
+                release={},
+                file_path="/chart/tests/sub/test.yaml",
+            ),
         ]
         mock_internal.return_value = TestResultSummary(
-            total=1, passed=1, failed=0, skipped=0, errors=0, time=0.2,
-            test_cases=[TestCaseResult(name="t1", suite="Rel", result="Pass", time=0.2)],
+            total=1,
+            passed=1,
+            failed=0,
+            skipped=0,
+            errors=0,
+            time=0.2,
+            test_cases=[
+                TestCaseResult(name="t1", suite="Rel", result="Pass", time=0.2)
+            ],
         )
 
         _run_suite(files, "/chart", [], "xunit", False)
@@ -200,32 +295,68 @@ class TestRunSuite:
             values_path=[],
             output_type="xunit",
             update_snapshot=False,
+            include_test_cases="failed_only",
+            max_message_length=1000,
         )
 
 
 # --- run_tests_parallel tests ---
+
 
 class TestRunTestsParallel:
     @patch("tools.run_tests_parallel.get_tests")
     @patch("tools.run_tests_parallel._run_unittest_internal")
     def test_parallel_execution_multiple_suites(self, mock_internal, mock_get_tests):
         mock_get_tests.return_value = [
-            TestFile(suite="Suite A", tests=["t1"], release={}, file_path="/a/test1.yaml"),
-            TestFile(suite="Suite B", tests=["t2"], release={}, file_path="/b/test2.yaml"),
-            TestFile(suite="Suite A", tests=["t3"], release={}, file_path="/a/test3.yaml"),
+            TestFile(
+                suite="Suite A", tests=["t1"], release={}, file_path="/a/test1.yaml"
+            ),
+            TestFile(
+                suite="Suite B", tests=["t2"], release={}, file_path="/b/test2.yaml"
+            ),
+            TestFile(
+                suite="Suite A", tests=["t3"], release={}, file_path="/a/test3.yaml"
+            ),
         ]
         mock_internal.side_effect = [
             TestResultSummary(
-                total=1, passed=1, failed=0, skipped=0, errors=0, time=0.5,
-                test_cases=[TestCaseResult(name="t1", suite="Suite A", result="Pass", time=0.5)],
+                total=1,
+                passed=1,
+                failed=0,
+                skipped=0,
+                errors=0,
+                time=0.5,
+                test_cases=[
+                    TestCaseResult(name="t1", suite="Suite A", result="Pass", time=0.5)
+                ],
             ),
             TestResultSummary(
-                total=1, passed=1, failed=0, skipped=0, errors=0, time=0.3,
-                test_cases=[TestCaseResult(name="t3", suite="Suite A", result="Pass", time=0.3)],
+                total=1,
+                passed=1,
+                failed=0,
+                skipped=0,
+                errors=0,
+                time=0.3,
+                test_cases=[
+                    TestCaseResult(name="t3", suite="Suite A", result="Pass", time=0.3)
+                ],
             ),
             TestResultSummary(
-                total=1, passed=0, failed=1, skipped=0, errors=0, time=0.4,
-                test_cases=[TestCaseResult(name="t2", suite="Suite B", result="Fail", time=0.4, message="err")],
+                total=1,
+                passed=0,
+                failed=1,
+                skipped=0,
+                errors=0,
+                time=0.4,
+                test_cases=[
+                    TestCaseResult(
+                        name="t2",
+                        suite="Suite B",
+                        result="Fail",
+                        time=0.4,
+                        message="err",
+                    )
+                ],
             ),
         ]
 
@@ -235,6 +366,8 @@ class TestRunTestsParallel:
         assert result.total == 3
         assert result.passed == 2
         assert result.failed == 1
+        assert result.elapsed_time is not None
+        assert result.elapsed_time >= 0
         assert len(result.test_cases) == 3
 
     @patch("tools.run_tests_parallel.get_tests")
@@ -254,7 +387,12 @@ class TestRunTestsParallel:
             TestFile(suite="S", tests=["t1"], release={}, file_path="/a/test.yaml"),
         ]
         mock_internal.return_value = TestResultSummary(
-            total=1, passed=1, failed=0, skipped=0, errors=0, time=0.1,
+            total=1,
+            passed=1,
+            failed=0,
+            skipped=0,
+            errors=0,
+            time=0.1,
             test_cases=[TestCaseResult(name="t1", suite="S", result="Pass", time=0.1)],
         )
 
@@ -271,8 +409,15 @@ class TestRunTestsParallel:
         ]
         mock_internal.side_effect = [
             TestResultSummary(
-                total=1, passed=1, failed=0, skipped=0, errors=0, time=0.2,
-                test_cases=[TestCaseResult(name="t1", suite="Good", result="Pass", time=0.2)],
+                total=1,
+                passed=1,
+                failed=0,
+                skipped=0,
+                errors=0,
+                time=0.2,
+                test_cases=[
+                    TestCaseResult(name="t1", suite="Good", result="Pass", time=0.2)
+                ],
             ),
             Exception("Helm crashed"),
         ]
@@ -297,12 +442,26 @@ class TestRunTestsParallel:
         ]
         mock_internal.side_effect = [
             TestResultSummary(
-                total=1, passed=1, failed=0, skipped=0, errors=0, time=0.3,
-                test_cases=[TestCaseResult(name="t1", suite="Only", result="Pass", time=0.3)],
+                total=1,
+                passed=1,
+                failed=0,
+                skipped=0,
+                errors=0,
+                time=0.3,
+                test_cases=[
+                    TestCaseResult(name="t1", suite="Only", result="Pass", time=0.3)
+                ],
             ),
             TestResultSummary(
-                total=1, passed=1, failed=0, skipped=0, errors=0, time=0.2,
-                test_cases=[TestCaseResult(name="t2", suite="Only", result="Pass", time=0.2)],
+                total=1,
+                passed=1,
+                failed=0,
+                skipped=0,
+                errors=0,
+                time=0.2,
+                test_cases=[
+                    TestCaseResult(name="t2", suite="Only", result="Pass", time=0.2)
+                ],
             ),
         ]
 
@@ -319,12 +478,18 @@ class TestRunTestsParallel:
             TestFile(suite="S", tests=["t1"], release={}, file_path="/a/test.yaml"),
         ]
         mock_internal.return_value = TestResultSummary(
-            total=1, passed=1, failed=0, skipped=0, errors=0, time=0.1,
+            total=1,
+            passed=1,
+            failed=0,
+            skipped=0,
+            errors=0,
+            time=0.1,
             test_cases=[TestCaseResult(name="t1", suite="S", result="Pass", time=0.1)],
         )
 
         run_tests_parallel(
-            "/tests", "./chart",
+            "/tests",
+            "./chart",
             values_path=["v1.yaml", "v2.yaml"],
             output_type="junit",
         )
@@ -335,4 +500,41 @@ class TestRunTestsParallel:
             values_path=["v1.yaml", "v2.yaml"],
             output_type="junit",
             update_snapshot=False,
+            include_test_cases="failed_only",
+            max_message_length=1000,
+        )
+
+    @patch("tools.run_tests_parallel.get_tests")
+    @patch("tools.run_tests_parallel._run_unittest_internal")
+    def test_passes_include_test_cases_and_max_message_length(
+        self, mock_internal, mock_get_tests
+    ):
+        mock_get_tests.return_value = [
+            TestFile(suite="S", tests=["t1"], release={}, file_path="/a/test.yaml"),
+        ]
+        mock_internal.return_value = TestResultSummary(
+            total=1,
+            passed=1,
+            failed=0,
+            skipped=0,
+            errors=0,
+            time=0.1,
+            test_cases=[],
+        )
+
+        run_tests_parallel(
+            "/tests",
+            "./chart",
+            include_test_cases="all",
+            max_message_length=500,
+        )
+
+        mock_internal.assert_called_once_with(
+            test_suite_files="/a/test.yaml",
+            chart_path="./chart",
+            values_path=[],
+            output_type="xunit",
+            update_snapshot=False,
+            include_test_cases="all",
+            max_message_length=500,
         )

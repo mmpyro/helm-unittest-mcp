@@ -45,21 +45,28 @@ class TestRunTestsIntegration:
 
     def test_run_unittest_all_tests(self, chart_path):
         """Test running all tests in the example chart."""
-        # Using default pattern "tests/*/*.yaml" which matches example/tests structure
-        result = run_unittest(
+        # Using default include_test_cases="failed_only"
+        result_default = run_unittest(
             test_suite_files="tests/*/*.yaml",
             chart_path=chart_path,
-            output_type="xunit"
+            output_type="xunit",
         )
 
-        assert isinstance(result, TestResultSummary)
-        assert result.total == 6
-        assert result.passed == 6
-        assert result.failed == 0
-        assert len(result.test_cases) == 6
+        assert isinstance(result_default, TestResultSummary)
+        assert result_default.total == 6
+        assert result_default.passed == 6
+        assert result_default.failed == 0
+        assert len(result_default.test_cases) == 0
 
-        # Verify some test names are present
-        test_names = [tc.name for tc in result.test_cases]
+        # With include_test_cases="all"
+        result_all = run_unittest(
+            test_suite_files="tests/*/*.yaml",
+            chart_path=chart_path,
+            output_type="xunit",
+            include_test_cases="all",
+        )
+        assert len(result_all.test_cases) == 6
+        test_names = [tc.name for tc in result_all.test_cases]
         assert "should render release-name-example deployment object" in test_names
         assert "should render release-name-example service object" in test_names
 
@@ -68,12 +75,16 @@ class TestRunTestsIntegration:
         result = run_unittest(
             test_suite_files="tests/ingress/*.yaml",
             chart_path=chart_path,
-            output_type="junit"
+            output_type="junit",
+            include_test_cases="all",
         )
 
         assert result.total == 1
         assert result.passed == 1
-        assert result.test_cases[0].name == "should render release-name-example ingress object"
+        assert (
+            result.test_cases[0].name
+            == "should render release-name-example ingress object"
+        )
 
     def test_run_unittest_with_values(self, chart_path):
         """Test running tests with an additional values file."""
@@ -82,7 +93,9 @@ class TestRunTestsIntegration:
         result = run_unittest(
             test_suite_files="tests/service/*.yaml",
             chart_path=chart_path,
-            values_path=["values.yaml"]  # Using the chart's own values.yaml as an extra values file
+            values_path=[
+                "values.yaml"
+            ],  # Using the chart's own values.yaml as an extra values file
         )
 
         assert result.total == 1
@@ -94,7 +107,8 @@ class TestRunTestsIntegration:
             result = run_unittest(
                 test_suite_files="tests/deployment/*.yaml",
                 chart_path=chart_path,
-                output_type=fmt
+                output_type=fmt,
+                include_test_cases="all",
             )
             assert result.passed >= 1
             assert len(result.test_cases) >= 1
@@ -108,8 +122,7 @@ class TestRunTestsIntegration:
 
         # Run update snapshot
         result = update_snapshot(
-            test_suite_files="tests/deployment/*.yaml",
-            chart_path=temp_chart
+            test_suite_files="tests/deployment/*.yaml", chart_path=temp_chart
         )
 
         # TestResultSummary doesn't have success attr normally, but its presence means it ran
@@ -119,8 +132,7 @@ class TestRunTestsIntegration:
         """Test running tests on a nonexistent chart path."""
         # helm unittest creates an empty valid report even when chart is missing
         result = run_unittest(
-            test_suite_files="tests/*.yaml",
-            chart_path="/nonexistent/path"
+            test_suite_files="tests/*.yaml", chart_path="/nonexistent/path"
         )
 
         assert isinstance(result, TestResultSummary)
@@ -131,8 +143,7 @@ class TestRunTestsIntegration:
         """Test running with a glob that matches no files."""
         # helm unittest will fail if it finds no test files
         result = run_unittest(
-            test_suite_files="nonexistent/*.yaml",
-            chart_path=chart_path
+            test_suite_files="nonexistent/*.yaml", chart_path=chart_path
         )
 
         # It should return a summary with 0 tests

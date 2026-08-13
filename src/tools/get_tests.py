@@ -16,6 +16,7 @@ class _DuplicateAnchorSafeLoader(yaml.SafeLoader):
     overwrites the previous anchor, matching YAML 1.2 semantics where
     the last definition of an anchor wins.
     """
+
     pass
 
 
@@ -42,19 +43,31 @@ mcp = Server().mcp
 
 
 @mcp.tool()
-def get_tests(dir_path: str, pattern: Optional[str] = "") -> list[TestFile]:
+def get_tests(
+    dir_path: str,
+    pattern: Optional[str] = "",
+    include_release: bool = False,
+    suite_pattern: Optional[str] = None,
+    limit: Optional[int] = None,
+    offset: int = 0,
+) -> list[TestFile]:
     """Recursively get all test files from a directory and its subdirectories.
 
     Args:
         dir_path: Path to the directory to search for test files
         pattern: Optional regex pattern to filter files. If empty or None,
                 matches all .yaml files. Otherwise, uses the provided regex pattern.
+        include_release: Whether to include the release dictionary in returned test files.
+                        Defaults to False to reduce output size.
+        suite_pattern: Optional regex pattern to filter by test suite name.
+        limit: Optional maximum number of test files to return.
+        offset: Optional offset for pagination (0-based index).
 
     Returns:
         List of TestFile objects parsed from matching files
 
     Raises:
-        ValueError: If dir_path is empty or not a string
+        ValueError: If dir_path is empty, not a string, or regex patterns are invalid
         FileNotFoundError: If the directory doesn't exist
         NotADirectoryError: If dir_path is not a directory
     """
@@ -72,7 +85,7 @@ def get_tests(dir_path: str, pattern: Optional[str] = "") -> list[TestFile]:
     if not os.path.isdir(dir_path):
         raise NotADirectoryError(f"Path is not a directory: {dir_path}")
 
-    # Determine the pattern to use
+    # Determine the file pattern to use
     if pattern is None or pattern.strip() == "":
         # Default pattern: match all .yaml files
         file_pattern = re.compile(r".*\.yaml$", re.IGNORECASE)
@@ -82,6 +95,14 @@ def get_tests(dir_path: str, pattern: Optional[str] = "") -> list[TestFile]:
             file_pattern = re.compile(pattern)
         except re.error as e:
             raise ValueError(f"Invalid regex pattern '{pattern}': {e}")
+
+    # Determine the suite pattern if provided
+    compiled_suite_pattern = None
+    if suite_pattern is not None and suite_pattern.strip() != "":
+        try:
+            compiled_suite_pattern = re.compile(suite_pattern)
+        except re.error as e:
+            raise ValueError(f"Invalid suite regex pattern '{suite_pattern}': {e}")
 
     test_files = []
 
@@ -94,23 +115,37 @@ def get_tests(dir_path: str, pattern: Optional[str] = "") -> list[TestFile]:
 
                 # Try to parse the file
                 try:
-                    test_file = get_test_from_file(file_path)
+                    test_file = get_test_from_file(
+                        file_path, include_release=include_release
+                    )
+                    # Filter by suite pattern if specified
+                    if compiled_suite_pattern and not compiled_suite_pattern.search(
+                        test_file.suite
+                    ):
+                        continue
                     test_files.append(test_file)
                 except Exception as e:
                     # Log the error but continue processing other files
-                    # This allows the function to be resilient to individual file errors
                     print(f"Warning: Failed to parse {file_path}: {e}")
                     continue
+
+    # Apply pagination offset and limit
+    if offset > 0:
+        test_files = test_files[offset:]
+
+    if limit is not None and limit >= 0:
+        test_files = test_files[:limit]
 
     return test_files
 
 
 @mcp.tool()
-def get_test_from_file(test_file_path: str) -> TestFile:
+def get_test_from_file(test_file_path: str, include_release: bool = False) -> TestFile:
     """Get the helm unittests from the specified file.
 
     Args:
         test_file_path: Path to the YAML test file
+        include_release: Whether to include the release dictionary. Defaults to False.
 
     Returns:
         TestFile object containing the parsed test data
@@ -128,11 +163,13 @@ def get_test_from_file(test_file_path: str) -> TestFile:
         raise ValueError("test_file_path cannot be empty")
 
     if not isinstance(test_file_path, str):
-        raise TypeError(f"test_file_path must be a string, got {type(test_file_path).__name__}")
+        raise TypeError(
+            f"test_file_path must be a string, got {type(test_file_path).__name__}"
+        )
 
     # Read and parse the file
     try:
-        with open(test_file_path, 'r') as f:
+        with open(test_file_path, "r") as f:
             tests = yaml.load(f, Loader=_DuplicateAnchorSafeLoader)
     except FileNotFoundError:
         raise FileNotFoundError(
@@ -150,9 +187,7 @@ def get_test_from_file(test_file_path: str) -> TestFile:
             "Please ensure the file contains valid YAML."
         )
     except Exception as e:
-        raise IOError(
-            f"Unexpected error reading test file {test_file_path}: {e}"
-        )
+        raise IOError(f"Unexpected error reading test file {test_file_path}: {e}")
 
     # Validate parsed content
     if tests is None:
@@ -167,7 +202,7 @@ def get_test_from_file(test_file_path: str) -> TestFile:
         )
 
     # Validate required fields
-    required_fields = ['suite', 'tests']
+    required_fields = ["suite", "tests"]
     missing_fields = [field for field in required_fields if field not in tests]
 
     if missing_fields:
@@ -177,7 +212,7 @@ def get_test_from_file(test_file_path: str) -> TestFile:
         )
 
     # Validate field types
-    suite = tests['suite']
+    suite = tests["suite"]
     if not isinstance(suite, str):
         raise TypeError(
             f"Field 'suite' must be a string in {test_file_path}, "
@@ -185,11 +220,9 @@ def get_test_from_file(test_file_path: str) -> TestFile:
         )
 
     if not suite.strip():
-        raise ValueError(
-            f"Field 'suite' cannot be empty in {test_file_path}"
-        )
+        raise ValueError(f"Field 'suite' cannot be empty in {test_file_path}")
 
-    test_list = tests['tests']
+    test_list = tests["tests"]
     if not isinstance(test_list, list):
         raise TypeError(
             f"Field 'tests' must be a list in {test_file_path}, "
@@ -197,19 +230,17 @@ def get_test_from_file(test_file_path: str) -> TestFile:
         )
 
     if not test_list:
-        raise ValueError(
-            f"Field 'tests' cannot be an empty list in {test_file_path}"
-        )
+        raise ValueError(f"Field 'tests' cannot be an empty list in {test_file_path}")
+
+    release = tests.get("release", {}) if include_release else None
 
     # Create and return TestFile object
     try:
         return TestFile(
             suite=suite,
-            tests=[x.get('it').strip() for x in test_list],
-            release=tests.get('release', {}),
-            file_path=test_file_path
+            tests=[x.get("it").strip() for x in test_list],
+            file_path=test_file_path,
+            release=release,
         )
     except Exception as e:
-        raise ValueError(
-            f"Failed to create TestFile object from {test_file_path}: {e}"
-        )
+        raise ValueError(f"Failed to create TestFile object from {test_file_path}: {e}")

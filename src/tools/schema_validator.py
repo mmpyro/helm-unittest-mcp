@@ -5,10 +5,9 @@ import requests
 from jsonschema import validate, ValidationError
 from pathlib import Path
 from typing import Optional
-from utils.mcp import Server
-from utils.dtos import ValidationResult
-
 from functools import lru_cache
+from utils.mcp import Server
+from utils.dtos import ValidationResult, BatchValidationSummary
 
 
 mcp = Server().mcp
@@ -63,36 +62,31 @@ def validate_schema(test_file_path: str) -> ValidationResult:
         if not test_file.exists():
             raise FileNotFoundError(f"Test file not found: {test_file_path}")
 
-        with open(test_file, 'r', encoding='utf-8') as f:
+        with open(test_file, "r", encoding="utf-8") as f:
             test_data = yaml.safe_load(f)
 
         # Validate the test data against the schema
         validate(instance=test_data, schema=schema)
 
         return ValidationResult(
-            success=True,
-            message=f"Validation successful for {test_file_path}"
+            success=True, message=f"Validation successful for {test_file_path}"
         )
 
     except FileNotFoundError as e:
-        return ValidationResult(
-            success=False,
-            message=str(e),
-            errors=[str(e)]
-        )
+        return ValidationResult(success=False, message=str(e), errors=[str(e)])
 
     except yaml.YAMLError as e:
         return ValidationResult(
             success=False,
             message=f"Invalid YAML syntax in {test_file_path}",
-            errors=[f"YAML parsing error: {str(e)}"]
+            errors=[f"YAML parsing error: {str(e)}"],
         )
 
     except requests.RequestException as e:
         return ValidationResult(
             success=False,
             message=f"Failed to fetch schema from {schema_url}",
-            errors=[f"Network error: {str(e)}"]
+            errors=[f"Network error: {str(e)}"],
         )
 
     except ValidationError as e:
@@ -101,19 +95,24 @@ def validate_schema(test_file_path: str) -> ValidationResult:
             message=f"Schema validation failed for {test_file_path}",
             errors=[
                 f"Validation error at {'.'.join(str(p) for p in e.path)}: {e.message}"
-            ]
+            ],
         )
 
     except Exception as e:
         return ValidationResult(
             success=False,
             message="Unexpected error during validation",
-            errors=[f"Error: {str(e)}"]
+            errors=[f"Error: {str(e)}"],
         )
 
 
 @mcp.tool()
-def validate_tests(dir_path: str, pattern: Optional[str] = "") -> list[ValidationResult]:
+def validate_tests(
+    dir_path: str,
+    pattern: Optional[str] = "",
+    only_failures: bool = False,
+    return_summary: bool = False,
+) -> list[ValidationResult] | BatchValidationSummary:
     """Recursively validate all test files from a directory and its subdirectories.
 
     This function walks through the specified directory and validates each matching
@@ -124,11 +123,11 @@ def validate_tests(dir_path: str, pattern: Optional[str] = "") -> list[Validatio
         dir_path (str): Path to the directory to search for test files
         pattern (Optional[str]): Optional regex pattern to filter files. If empty or None,
                                 matches all .yaml files. Otherwise, uses the provided regex pattern.
+        only_failures (bool): If True, returns only failed ValidationResult objects.
+        return_summary (bool): If True, returns a BatchValidationSummary object.
 
     Returns:
-        list[ValidationResult]: List of ValidationResult objects, one for each file that was
-                                attempted to be validated. Files that match the pattern but fail
-                                to validate will have success=False in their result.
+        list[ValidationResult] | BatchValidationSummary: List of results or aggregate summary.
 
     Raises:
         ValueError: If dir_path is empty, not a string, or pattern is invalid regex
@@ -187,8 +186,20 @@ def validate_tests(dir_path: str, pattern: Optional[str] = "") -> list[Validatio
                         ValidationResult(
                             success=False,
                             message=f"Unexpected error validating {file_path}",
-                            errors=[f"Error: {str(e)}"]
+                            errors=[f"Error: {str(e)}"],
                         )
                     )
+
+    if return_summary:
+        failures = [r for r in validation_results if not r.success]
+        return BatchValidationSummary(
+            total_files=len(validation_results),
+            valid_files=len(validation_results) - len(failures),
+            invalid_files=len(failures),
+            failures=failures,
+        )
+
+    if only_failures:
+        return [r for r in validation_results if not r.success]
 
     return validation_results
