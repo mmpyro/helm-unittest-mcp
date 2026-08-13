@@ -75,6 +75,15 @@ def test_get_test_from_file_duplicate_anchors():
         assert result.tests == ["test case 1", "test case 2"]
 
 
+def test_get_test_from_file_duplicate_anchors():
+    with patch("builtins.open", mock_open(read_data=DUPLICATE_ANCHOR_YAML)):
+        result = get_test_from_file("dup_anchor.yaml")
+
+        assert isinstance(result, TestFile)
+        assert result.suite == "Duplicate Anchor Suite"
+        assert result.tests == ["test case 1", "test case 2"]
+
+
 def test_get_test_from_file_not_found():
     with patch("builtins.open", side_effect=FileNotFoundError):
         with pytest.raises(FileNotFoundError):
