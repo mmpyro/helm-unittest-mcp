@@ -73,7 +73,7 @@ class TestMergeSummaries:
             ],
         )
 
-        merged = _merge_summaries([s1, s2])
+        merged = _merge_summaries([s1, s2], elapsed_time=1.234)
 
         assert merged.total == 5
         assert merged.passed == 3
@@ -81,9 +81,11 @@ class TestMergeSummaries:
         assert merged.skipped == 1
         assert merged.errors == 0
         assert merged.time == pytest.approx(2.3)
+        assert merged.elapsed_time == 1.234
         assert len(merged.test_cases) == 5
 
     def test_merge_empty_list(self):
+
         merged = _merge_summaries([])
 
         assert merged.total == 0
@@ -243,7 +245,10 @@ class TestRunTestsParallel:
         assert result.total == 3
         assert result.passed == 2
         assert result.failed == 1
+        assert result.elapsed_time is not None
+        assert result.elapsed_time >= 0
         assert len(result.test_cases) == 3
+
 
     @patch("tools.run_tests_parallel.get_tests")
     def test_empty_test_files(self, mock_get_tests):

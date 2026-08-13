@@ -46,6 +46,9 @@ def test_run_unittest_internal_success(mock_exists, mock_remove, mock_close, moc
     # Verify cleanup
     mock_remove.assert_called_once_with("/tmp/temp_report.xml")
     assert result == mock_summary
+    assert result.elapsed_time is not None
+    assert result.elapsed_time >= 0
+
 
 
 @patch("tools.run_tests.TestResultParser")

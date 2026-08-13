@@ -1,5 +1,6 @@
 import concurrent.futures
 import os
+import time
 from typing import Optional
 from collections import defaultdict
 from utils.mcp import Server
@@ -28,11 +29,15 @@ def _group_tests_by_suite(
     return dict(groups)
 
 
-def _merge_summaries(summaries: list[TestResultSummary]) -> TestResultSummary:
+def _merge_summaries(
+    summaries: list[TestResultSummary],
+    elapsed_time: Optional[float] = None,
+) -> TestResultSummary:
     """Merge multiple TestResultSummary objects into a single aggregate summary.
 
     Args:
         summaries: List of TestResultSummary objects to merge
+        elapsed_time: Optional wall-clock elapsed time in seconds
 
     Returns:
         A single TestResultSummary with aggregated totals and
@@ -63,6 +68,7 @@ def _merge_summaries(summaries: list[TestResultSummary]) -> TestResultSummary:
         errors=errors,
         time=time,
         test_cases=test_cases,
+        elapsed_time=elapsed_time,
     )
 
 
@@ -148,9 +154,11 @@ def run_tests_parallel(
     Returns:
         TestResultSummary: An aggregate summary of all test executions
     """
+    start_time = time.perf_counter()
     test_files = get_tests(dir_path, pattern)
 
     if not test_files:
+        elapsed_time = round(time.perf_counter() - start_time, 4)
         return TestResultSummary(
             total=0,
             passed=0,
@@ -159,6 +167,7 @@ def run_tests_parallel(
             errors=0,
             time=0.0,
             test_cases=[],
+            elapsed_time=elapsed_time,
         )
 
     suite_groups = _group_tests_by_suite(test_files)
@@ -209,5 +218,7 @@ def run_tests_parallel(
                     )
                 )
 
-    return _merge_summaries(suite_summaries)
+    elapsed_time = round(time.perf_counter() - start_time, 4)
+    return _merge_summaries(suite_summaries, elapsed_time=elapsed_time)
+
 

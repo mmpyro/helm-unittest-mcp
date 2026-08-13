@@ -1,6 +1,7 @@
 import subprocess
 import tempfile
 import os
+import time
 from typing import Optional, cast
 from utils.mcp import Server
 from utils.parser import TestResultParser, TestFormat
@@ -20,6 +21,7 @@ def _run_unittest_internal(
     include_test_cases: str = "failed_only",
     max_message_length: Optional[int] = 1000,
 ) -> TestResultSummary:
+    start_time = time.perf_counter()
     is_temp = False
     if not output_file:
         # Create a temporary file to store the XML report
@@ -60,7 +62,9 @@ def _run_unittest_internal(
             filtered_cases.append(tc)
 
         summary.test_cases = filtered_cases
+        summary.elapsed_time = round(time.perf_counter() - start_time, 4)
         return summary
+
     finally:
         # Cleanup temporary file if we created one
         if is_temp and os.path.exists(output_file):

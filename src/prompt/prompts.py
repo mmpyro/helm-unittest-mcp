@@ -126,7 +126,7 @@ def run_helm_tests(chart_path: str, test_directory: str = "tests", test_pattern:
 1. Call `run_tests_parallel` with `dir_path="{test_directory}"` and `chart_path="{chart_path}"` to run all tests in parallel.
 2. Analyze the `TestResultSummary` returned by the tool.
 3. Present the results to the user in a clear, summarized format:
-    - Overview: Total tests, Passed, Failed, Skipped, and total Execution Time.
+    - Overview: Total tests, Passed, Failed, Skipped, aggregate Execution Time (`time`), and wall-clock Elapsed Time (`elapsed_time`).
     - Note that passing test cases are excluded from `test_cases` list by default (`include_test_cases="failed_only"`), but count towards totals (`passed`, `total`). Set `include_test_cases="all"` if all individual passing test cases are needed.
     - If there are failures: List each failed test case, including its suite name and error message (truncated to `max_message_length` if very long).
     - If all tests pass: Congratulate the user and highlight the successful execution.
