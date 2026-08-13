@@ -218,5 +218,3 @@ def run_tests_parallel(
 
     elapsed_time = round(time.perf_counter() - start_time, 4)
     return _merge_summaries(suite_summaries, elapsed_time=elapsed_time)
-
-

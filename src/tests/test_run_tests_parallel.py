@@ -370,8 +370,6 @@ class TestRunTestsParallel:
         assert result.elapsed_time >= 0
         assert len(result.test_cases) == 3
 
-
-
     @patch("tools.run_tests_parallel.get_tests")
     def test_empty_test_files(self, mock_get_tests):
         mock_get_tests.return_value = []
@@ -540,5 +538,3 @@ class TestRunTestsParallel:
             include_test_cases="all",
             max_message_length=500,
         )
-
-
