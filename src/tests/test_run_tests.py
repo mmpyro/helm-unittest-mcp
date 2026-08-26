@@ -92,7 +92,19 @@ def test_run_unittest_with_provided_file(mock_run, mock_parser_class):
 
 @patch("tools.run_tests._run_unittest_internal")
 def test_run_unittest_tool(mock_internal):
-    run_unittest("files", "path", ["v1"], "junit", "out")
+    run_unittest(
+        "files",
+        "path",
+        ["v1"],
+        "junit",
+        "out",
+        strict=True,
+        fail_fast=True,
+        with_subchart=False,
+        skip_schema_validation=True,
+        chart_tests_path="custom_tests",
+        debug=True,
+    )
     mock_internal.assert_called_once_with(
         "files",
         "path",
@@ -102,12 +114,30 @@ def test_run_unittest_tool(mock_internal):
         update_snapshot=False,
         include_test_cases="failed_only",
         max_message_length=1000,
+        strict=True,
+        fail_fast=True,
+        with_subchart=False,
+        skip_schema_validation=True,
+        chart_tests_path="custom_tests",
+        debug=True,
     )
 
 
 @patch("tools.run_tests._run_unittest_internal")
 def test_update_snapshot_tool(mock_internal):
-    update_snapshot("files", "path", ["v1"], "junit", "out")
+    update_snapshot(
+        "files",
+        "path",
+        ["v1"],
+        "junit",
+        "out",
+        strict=True,
+        fail_fast=True,
+        with_subchart=True,
+        skip_schema_validation=True,
+        chart_tests_path="custom_tests",
+        debug=True,
+    )
     mock_internal.assert_called_once_with(
         "files",
         "path",
@@ -117,7 +147,52 @@ def test_update_snapshot_tool(mock_internal):
         update_snapshot=True,
         include_test_cases="failed_only",
         max_message_length=1000,
+        strict=True,
+        fail_fast=True,
+        with_subchart=True,
+        skip_schema_validation=True,
+        chart_tests_path="custom_tests",
+        debug=True,
     )
+
+
+@patch("tools.run_tests.TestResultParser")
+@patch("tools.run_tests.subprocess.run")
+@patch("tools.run_tests.tempfile.mkstemp")
+@patch("tools.run_tests.os.close")
+@patch("tools.run_tests.os.remove")
+@patch("tools.run_tests.os.path.exists")
+def test_run_unittest_all_flags_command_generation(
+    mock_exists, mock_remove, mock_close, mock_mkstemp, mock_run, mock_parser_class
+):
+    mock_mkstemp.return_value = (10, "/tmp/temp_report.xml")
+    mock_exists.return_value = True
+    mock_parser_instance = MagicMock()
+    mock_parser_instance.parse.return_value = TestResultSummary(
+        total=1, passed=1, failed=0, skipped=0, errors=0, time=0.1, test_cases=[]
+    )
+    mock_parser_class.return_value = mock_parser_instance
+
+    _run_unittest_internal(
+        test_suite_files="tests/*.yaml",
+        chart_path="./chart",
+        strict=True,
+        fail_fast=True,
+        with_subchart=False,
+        skip_schema_validation=True,
+        chart_tests_path="custom_tests",
+        debug=True,
+    )
+
+    args, _ = mock_run.call_args
+    cmd = args[0]
+    assert "--strict" in cmd
+    assert "--failfast" in cmd
+    assert "--with-subchart=false" in cmd
+    assert "--skip-schema-validation" in cmd
+    assert "--chart-tests-path" in cmd
+    assert cmd[cmd.index("--chart-tests-path") + 1] == "custom_tests"
+    assert "--debugPlugin" in cmd
 
 
 @patch("tools.run_tests.TestResultParser")

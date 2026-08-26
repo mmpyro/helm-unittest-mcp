@@ -1,0 +1,18 @@
+<testExecutions version="1">
+	<file path="example/tests/deployment/deployment_example_test.yaml">
+		<testCase name="should render release-name-example deployment object" duration="4"></testCase>
+	</file>
+	<file path="example/tests/horizontalpodautoscaler/horizontalpodautoscaler_example_test.yaml">
+		<testCase name="should render release-name-example horizontal pod autoscaler object" duration="2"></testCase>
+	</file>
+	<file path="example/tests/ingress/ingress_example_test.yaml">
+		<testCase name="should render release-name-example ingress object" duration="1"></testCase>
+	</file>
+	<file path="example/tests/service/service_example_test.yaml">
+		<testCase name="should render release-name-example service object" duration="1"></testCase>
+	</file>
+	<file path="example/tests/serviceaccount/serviceaccount_example_test.yaml">
+		<testCase name="should render release-name-example service account object" duration="0"></testCase>
+		<testCase name="should use release-name-example service account into deployment" duration="0"></testCase>
+	</file>
+</testExecutions>

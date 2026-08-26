@@ -219,6 +219,12 @@ class TestRunSuite:
             update_snapshot=False,
             include_test_cases="failed_only",
             max_message_length=1000,
+            strict=False,
+            fail_fast=False,
+            with_subchart=None,
+            skip_schema_validation=False,
+            chart_tests_path=None,
+            debug=False,
         )
         mock_internal.assert_any_call(
             test_suite_files="/a/test2.yaml",
@@ -228,6 +234,12 @@ class TestRunSuite:
             update_snapshot=False,
             include_test_cases="failed_only",
             max_message_length=1000,
+            strict=False,
+            fail_fast=False,
+            with_subchart=None,
+            skip_schema_validation=False,
+            chart_tests_path=None,
+            debug=False,
         )
 
         assert result.total == 2
@@ -262,6 +274,12 @@ class TestRunSuite:
             update_snapshot=True,
             include_test_cases="failed_only",
             max_message_length=1000,
+            strict=False,
+            fail_fast=False,
+            with_subchart=None,
+            skip_schema_validation=False,
+            chart_tests_path=None,
+            debug=False,
         )
         assert result.total == 1
 
@@ -297,6 +315,12 @@ class TestRunSuite:
             update_snapshot=False,
             include_test_cases="failed_only",
             max_message_length=1000,
+            strict=False,
+            fail_fast=False,
+            with_subchart=None,
+            skip_schema_validation=False,
+            chart_tests_path=None,
+            debug=False,
         )
 
 
@@ -502,6 +526,12 @@ class TestRunTestsParallel:
             update_snapshot=False,
             include_test_cases="failed_only",
             max_message_length=1000,
+            strict=False,
+            fail_fast=False,
+            with_subchart=None,
+            skip_schema_validation=False,
+            chart_tests_path=None,
+            debug=False,
         )
 
     @patch("tools.run_tests_parallel.get_tests")
@@ -537,4 +567,55 @@ class TestRunTestsParallel:
             update_snapshot=False,
             include_test_cases="all",
             max_message_length=500,
+            strict=False,
+            fail_fast=False,
+            with_subchart=None,
+            skip_schema_validation=False,
+            chart_tests_path=None,
+            debug=False,
+        )
+
+    @patch("tools.run_tests_parallel.get_tests")
+    @patch("tools.run_tests_parallel._run_unittest_internal")
+    def test_run_tests_parallel_passes_all_flags(
+        self, mock_internal, mock_get_tests
+    ):
+        mock_get_tests.return_value = [
+            TestFile(suite="S", tests=["t1"], release={}, file_path="/a/test.yaml"),
+        ]
+        mock_internal.return_value = TestResultSummary(
+            total=1,
+            passed=1,
+            failed=0,
+            skipped=0,
+            errors=0,
+            time=0.1,
+            test_cases=[],
+        )
+
+        run_tests_parallel(
+            "/tests",
+            "./chart",
+            strict=True,
+            fail_fast=True,
+            with_subchart=False,
+            skip_schema_validation=True,
+            chart_tests_path="custom_tests",
+            debug=True,
+        )
+
+        mock_internal.assert_called_once_with(
+            test_suite_files="/a/test.yaml",
+            chart_path="./chart",
+            values_path=[],
+            output_type="xunit",
+            update_snapshot=False,
+            include_test_cases="failed_only",
+            max_message_length=1000,
+            strict=True,
+            fail_fast=True,
+            with_subchart=False,
+            skip_schema_validation=True,
+            chart_tests_path="custom_tests",
+            debug=True,
         )

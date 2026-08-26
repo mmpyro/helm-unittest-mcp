@@ -56,6 +56,17 @@ def nunit_report_path(reports_dir):
     return report_path
 
 
+@pytest.fixture
+def sonar_report_path(reports_dir):
+    """Fixture providing the path to the Sonar report file."""
+    report_path = os.path.join(reports_dir, "sonar_report.xml")
+
+    if not os.path.exists(report_path):
+        pytest.skip(f"Sonar report not found: {report_path}")
+
+    return report_path
+
+
 class TestJUnitParserIntegration:
     """Integration tests for JUnit parser using real report files."""
 
@@ -427,6 +438,27 @@ class TestParserRealWorldScenarios:
         nunit_result = nunit_parser.parse(nunit_report_path)
         assert nunit_result.total == 6
 
+
+class TestSonarParserIntegration:
+    """Integration tests for Sonar parser using real report files."""
+
+    def test_parse_sonar_real_report(self, sonar_report_path):
+        """Test parsing a real Sonar report file."""
+        parser = TestResultParser("sonar")
+        result = parser.parse(sonar_report_path)
+
+        assert isinstance(result, TestResultSummary)
+        assert result.total == 6
+        assert result.passed == 6
+        assert result.failed == 0
+        assert result.skipped == 0
+        assert result.errors == 0
+        assert len(result.test_cases) == 6
+
+
+class TestCrossFormatConsistency:
+    """Integration tests to ensure all parsers produce consistent results."""
+
     def test_verify_helm_unittest_metadata(self, junit_report_path):
         """Test that helm-unittest specific metadata is present in reports."""
         # Read the file to verify metadata
@@ -438,13 +470,14 @@ class TestParserRealWorldScenarios:
         assert "1.6" in content
 
     def test_verify_test_execution_times_are_realistic(
-        self, junit_report_path, xunit_report_path, nunit_report_path
+        self, junit_report_path, xunit_report_path, nunit_report_path, sonar_report_path
     ):
         """Test that execution times are realistic (not negative or extremely large)."""
         parsers: list[tuple[TestFormat, str]] = [
             ("junit", junit_report_path),
             ("xunit", xunit_report_path),
             ("nunit", nunit_report_path),
+            ("sonar", sonar_report_path),
         ]
 
         for format_type, report_path in parsers:
