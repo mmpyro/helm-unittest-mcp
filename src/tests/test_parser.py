@@ -140,6 +140,54 @@ def test_parse_nunit_string():
     assert "Fail Message\nAssertion error at line 5" == result.test_cases[1].message
 
 
+SONAR_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<testExecutions version="1">
+    <file path="example/tests/deployment/deployment_example_test.yaml">
+        <testCase name="should render deployment" duration="400" />
+        <testCase name="should fail deployment" duration="200">
+            <failure message="Assertion failed">Expected 2 replicas but got 1</failure>
+        </testCase>
+        <testCase name="should skip deployment" duration="0">
+            <skipped message="Feature disabled" />
+        </testCase>
+        <testCase name="should error deployment" duration="100">
+            <error message="Template syntax error">Unknown function</error>
+        </testCase>
+    </file>
+</testExecutions>
+"""
+
+
+def test_parse_sonar_string():
+    parser = TestResultParser("sonar")
+    result = parser.parse(SONAR_XML)
+
+    assert result.total == 4
+    assert result.passed == 1
+    assert result.failed == 2
+    assert result.skipped == 1
+    assert result.errors == 1
+    assert result.time == pytest.approx(0.7)  # (400 + 200 + 0 + 100) / 1000 = 0.7s
+    assert len(result.test_cases) == 4
+
+    assert result.test_cases[0].name == "should render deployment"
+    assert result.test_cases[0].result == "Pass"
+    assert result.test_cases[0].time == 0.4
+    assert result.test_cases[0].message is None
+
+    assert result.test_cases[1].name == "should fail deployment"
+    assert result.test_cases[1].result == "Fail"
+    assert "Assertion failed\nExpected 2 replicas but got 1" == result.test_cases[1].message
+
+    assert result.test_cases[2].name == "should skip deployment"
+    assert result.test_cases[2].result == "Skip"
+    assert result.test_cases[2].message == "Feature disabled"
+
+    assert result.test_cases[3].name == "should error deployment"
+    assert result.test_cases[3].result == "Fail"
+    assert "Template syntax error\nUnknown function" == result.test_cases[3].message
+
+
 def test_parse_invalid_xml():
     parser = TestResultParser("junit")
     with pytest.raises(ET.ParseError):

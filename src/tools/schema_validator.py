@@ -16,10 +16,19 @@ schema_url = "https://raw.githubusercontent.com/helm-unittest/helm-unittest/refs
 
 @lru_cache(maxsize=1)
 def _get_schema(url: str) -> dict:
-    """Fetch and parse the JSON schema from the provided URL with caching."""
-    response = requests.get(url, timeout=10)
-    response.raise_for_status()
-    return response.json()
+    """Fetch and parse the JSON schema from the provided URL with local fallback."""
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except Exception:
+        # Fallback to bundled schema
+        bundled_path = Path(__file__).parent.parent / "resources" / "schemas" / "helm-testsuite.json"
+        if bundled_path.exists():
+            import json
+            with open(bundled_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        raise
 
 
 @mcp.tool()

@@ -4,7 +4,7 @@ from pathlib import Path
 from utils.dtos import TestResultSummary, TestCaseResult
 
 
-TestFormat = Literal["junit", "xunit", "nunit"]
+TestFormat = Literal["junit", "xunit", "nunit", "sonar"]
 
 
 class TestResultParser(object):
@@ -28,6 +28,8 @@ class TestResultParser(object):
             return self._parse_xunit(test_result)
         elif self.report_type == "nunit":
             return self._parse_nunit(test_result)
+        elif self.report_type == "sonar":
+            return self._parse_sonar(test_result)
         else:
             raise ValueError(f"Unsupported report type: {self.report_type}")
 
@@ -407,6 +409,110 @@ class TestResultParser(object):
                             message=failure_message.strip()
                             if failure_message
                             else None,
+                        )
+                    )
+
+        return TestResultSummary(
+            total=total_tests,
+            passed=total_passed,
+            failed=total_failed,
+            skipped=total_skipped,
+            errors=total_errors,
+            time=total_time,
+            test_cases=test_cases,
+        )
+
+    def _parse_sonar(self, test_result: str) -> TestResultSummary:
+        """Parse SonarQube generic test execution XML format.
+
+        Args:
+            test_result (str): Path to Sonar XML file or XML string
+
+        Returns:
+            TestResultSummary: Parsed test results with summary and individual test cases
+        """
+        root = self._get_root(test_result)
+
+        total_tests = 0
+        total_passed = 0
+        total_failed = 0
+        total_skipped = 0
+        total_errors = 0
+        total_time = 0.0
+        test_cases: list[TestCaseResult] = []
+
+        for file_elem in root.findall(".//file"):
+            file_path = file_elem.get("path", "")
+            # Use file_path or basename as suite name
+            suite_name = file_path
+
+            for test_case in file_elem.findall("./testCase"):
+                total_tests += 1
+                name = test_case.get("name", "Unknown Test")
+                # duration is in milliseconds in Sonar format
+                duration_ms_str = test_case.get("duration", "0")
+                try:
+                    time_sec = float(duration_ms_str) / 1000.0
+                except (ValueError, TypeError):
+                    time_sec = 0.0
+                total_time += time_sec
+
+                failure_elem = test_case.find("./failure")
+                error_elem = test_case.find("./error")
+                skipped_elem = test_case.find("./skipped")
+
+                if failure_elem is not None:
+                    total_failed += 1
+                    msg = failure_elem.get("message", "")
+                    detail = (failure_elem.text or "").strip()
+                    full_msg = f"{msg}\n{detail}".strip() if msg and detail else (msg or detail)
+                    test_cases.append(
+                        TestCaseResult(
+                            name=name,
+                            suite=suite_name,
+                            result="Fail",
+                            time=time_sec,
+                            message=full_msg or None,
+                        )
+                    )
+                elif error_elem is not None:
+                    total_failed += 1
+                    total_errors += 1
+                    msg = error_elem.get("message", "")
+                    detail = (error_elem.text or "").strip()
+                    full_msg = f"{msg}\n{detail}".strip() if msg and detail else (msg or detail)
+                    test_cases.append(
+                        TestCaseResult(
+                            name=name,
+                            suite=suite_name,
+                            result="Fail",
+                            time=time_sec,
+                            message=full_msg or None,
+                        )
+                    )
+                elif skipped_elem is not None:
+                    total_skipped += 1
+                    msg = skipped_elem.get("message", "")
+                    detail = (skipped_elem.text or "").strip()
+                    full_msg = f"{msg}\n{detail}".strip() if msg and detail else (msg or detail)
+                    test_cases.append(
+                        TestCaseResult(
+                            name=name,
+                            suite=suite_name,
+                            result="Skip",
+                            time=time_sec,
+                            message=full_msg or None,
+                        )
+                    )
+                else:
+                    total_passed += 1
+                    test_cases.append(
+                        TestCaseResult(
+                            name=name,
+                            suite=suite_name,
+                            result="Pass",
+                            time=time_sec,
+                            message=None,
                         )
                     )
 

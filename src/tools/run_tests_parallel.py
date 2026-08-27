@@ -80,6 +80,12 @@ def _run_suite(
     update_snapshot: bool,
     include_test_cases: str = "failed_only",
     max_message_length: Optional[int] = 1000,
+    strict: bool = False,
+    fail_fast: bool = False,
+    with_subchart: Optional[bool] = None,
+    skip_schema_validation: bool = False,
+    chart_tests_path: Optional[str] = None,
+    debug: bool = False,
 ) -> TestResultSummary:
     """Run all test files for a single suite sequentially.
 
@@ -91,6 +97,12 @@ def _run_suite(
         update_snapshot: Whether to update snapshots
         include_test_cases: Which test cases to include in results ("failed_only", "all", "none")
         max_message_length: Maximum character length for failure messages
+        strict: Whether to strictly parse test suites
+        fail_fast: Whether to quit immediately on failure
+        with_subchart: Whether to include subchart tests
+        skip_schema_validation: Whether to skip schema validation
+        chart_tests_path: Custom test directory location
+        debug: Whether to enable verbose debug output
 
     Returns:
         Merged TestResultSummary for the entire suite
@@ -114,6 +126,12 @@ def _run_suite(
             update_snapshot=update_snapshot,
             include_test_cases=include_test_cases,
             max_message_length=max_message_length,
+            strict=strict,
+            fail_fast=fail_fast,
+            with_subchart=with_subchart,
+            skip_schema_validation=skip_schema_validation,
+            chart_tests_path=chart_tests_path,
+            debug=debug,
         )
         summaries.append(summary)
 
@@ -130,6 +148,12 @@ def run_tests_parallel(
     max_workers: Optional[int] = None,
     include_test_cases: str = "failed_only",
     max_message_length: Optional[int] = 1000,
+    strict: bool = False,
+    fail_fast: bool = False,
+    with_subchart: Optional[bool] = None,
+    skip_schema_validation: bool = False,
+    chart_tests_path: Optional[str] = None,
+    debug: bool = False,
 ) -> TestResultSummary:
     """Run helm unit tests in parallel, grouped by suite.
 
@@ -144,12 +168,18 @@ def run_tests_parallel(
         pattern: Optional regex pattern to filter test files.
                  If empty or None, matches all .yaml files.
         values_path: Optional list of paths to values files
-        output_type: Format of the test report ("xunit", "junit", or "nunit")
+        output_type: Format of the test report ("xunit", "junit", "nunit", or "sonar")
         max_workers: Maximum number of parallel workers. If None, defaults
                      to ThreadPoolExecutor's default.
         include_test_cases: Which test cases to include in test_cases list:
                             "failed_only" (default), "all", or "none".
         max_message_length: Maximum character length for failure messages.
+        strict: Strictly parse the test suites.
+        fail_fast: Quit testing immediately on the first failed test.
+        with_subchart: Include tests of subcharts in charts folder.
+        skip_schema_validation: Skip values schema validation when rendering chart.
+        chart_tests_path: Folder location relative to chart where test suites are located.
+        debug: Enable verbose debug output from helm-unittest plugin.
 
     Returns:
         TestResultSummary: An aggregate summary of all test executions
@@ -185,6 +215,12 @@ def run_tests_parallel(
                 False,
                 include_test_cases,
                 max_message_length,
+                strict,
+                fail_fast,
+                with_subchart,
+                skip_schema_validation,
+                chart_tests_path,
+                debug,
             ): suite_name
             for suite_name, suite_files in suite_groups.items()
         }

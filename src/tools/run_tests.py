@@ -20,6 +20,12 @@ def _run_unittest_internal(
     update_snapshot: bool = False,
     include_test_cases: str = "failed_only",
     max_message_length: Optional[int] = 1000,
+    strict: bool = False,
+    fail_fast: bool = False,
+    with_subchart: Optional[bool] = None,
+    skip_schema_validation: bool = False,
+    chart_tests_path: Optional[str] = None,
+    debug: bool = False,
 ) -> TestResultSummary:
     start_time = time.perf_counter()
     is_temp = False
@@ -43,6 +49,24 @@ def _run_unittest_internal(
     if update_snapshot:
         cmd.append("-u")
 
+    if strict:
+        cmd.append("--strict")
+
+    if fail_fast:
+        cmd.append("--failfast")
+
+    if with_subchart is not None:
+        cmd.append(f"--with-subchart={str(with_subchart).lower()}")
+
+    if skip_schema_validation:
+        cmd.append("--skip-schema-validation")
+
+    if chart_tests_path:
+        cmd.extend(["--chart-tests-path", chart_tests_path])
+
+    if debug:
+        cmd.append("--debugPlugin")
+
     for v in values_path:
         cmd.append("-v")
         cmd.append(v)
@@ -51,7 +75,7 @@ def _run_unittest_internal(
     subprocess.run(cmd, text=True, capture_output=True, check=False)
 
     try:
-        parser = TestResultParser(cast(TestFormat, output_type))
+        parser = TestResultParser(cast(TestFormat, output_type.lower()))
         summary = parser.parse(output_file)
 
         # Filter test cases and truncate messages
@@ -100,6 +124,12 @@ def run_unittest(
     output_file: Optional[str] = None,
     include_test_cases: str = "failed_only",
     max_message_length: Optional[int] = 1000,
+    strict: bool = False,
+    fail_fast: bool = False,
+    with_subchart: Optional[bool] = None,
+    skip_schema_validation: bool = False,
+    chart_tests_path: Optional[str] = None,
+    debug: bool = False,
 ) -> TestResultSummary:
     """Run helm unit tests and return a summary of the results.
 
@@ -107,13 +137,19 @@ def run_unittest(
         test_suite_files (str): Glob pattern for test suite files (e.g. "tests/*_test.yaml")
         chart_path (str): Path to the Helm chart to test
         values_path (list[str]): Optional list of paths to values files
-        output_type (str): Format of the test report ("xunit", "junit", or "nunit")
+        output_type (str): Format of the test report ("xunit", "junit", "nunit", or "sonar")
         output_file (str, optional): Path where to save the test report.
                                      If not provided, a temporary file will be used.
         include_test_cases (str): Which test cases to include in test_cases list:
                                   "failed_only" (default), "all", or "none".
         max_message_length (int, optional): Maximum character length for failure messages.
                                             Set to None or negative to disable truncation.
+        strict (bool): Strictly parse the test suites (fail on unknown fields).
+        fail_fast (bool): Quit testing immediately on the first failed test.
+        with_subchart (bool, optional): Include tests of subcharts in charts folder.
+        skip_schema_validation (bool): Skip values schema validation when rendering chart.
+        chart_tests_path (str, optional): Folder location relative to chart where test suites are located.
+        debug (bool): Enable verbose debug output from helm-unittest plugin.
 
     Returns:
         TestResultSummary: A summary of the test execution, including total counts and individual test cases.
@@ -127,6 +163,12 @@ def run_unittest(
         update_snapshot=False,
         include_test_cases=include_test_cases,
         max_message_length=max_message_length,
+        strict=strict,
+        fail_fast=fail_fast,
+        with_subchart=with_subchart,
+        skip_schema_validation=skip_schema_validation,
+        chart_tests_path=chart_tests_path,
+        debug=debug,
     )
 
 
@@ -139,6 +181,12 @@ def update_snapshot(
     output_file: Optional[str] = None,
     include_test_cases: str = "failed_only",
     max_message_length: Optional[int] = 1000,
+    strict: bool = False,
+    fail_fast: bool = False,
+    with_subchart: Optional[bool] = None,
+    skip_schema_validation: bool = False,
+    chart_tests_path: Optional[str] = None,
+    debug: bool = False,
 ) -> TestResultSummary:
     """Update snapshots for helm unit tests and return a summary of the results.
 
@@ -146,13 +194,19 @@ def update_snapshot(
         test_suite_files (str): Glob pattern for test suite files (e.g. "tests/*_test.yaml")
         chart_path (str): Path to the Helm chart to test
         values_path (list[str]): Optional list of paths to values files
-        output_type (str): Format of the test report ("xunit", "junit", or "nunit")
+        output_type (str): Format of the test report ("xunit", "junit", "nunit", or "sonar")
         output_file (str, optional): Path where to save the test report.
                                      If not provided, a temporary file will be used.
         include_test_cases (str): Which test cases to include in test_cases list:
                                   "failed_only" (default), "all", or "none".
         max_message_length (int, optional): Maximum character length for failure messages.
                                             Set to None or negative to disable truncation.
+        strict (bool): Strictly parse the test suites.
+        fail_fast (bool): Quit testing immediately on the first failed test.
+        with_subchart (bool, optional): Include tests of subcharts in charts folder.
+        skip_schema_validation (bool): Skip values schema validation when rendering chart.
+        chart_tests_path (str, optional): Folder location relative to chart where test suites are located.
+        debug (bool): Enable verbose debug output from helm-unittest plugin.
 
     Returns:
         TestResultSummary: A summary of the test execution, including total counts and individual test cases.
@@ -166,4 +220,10 @@ def update_snapshot(
         update_snapshot=True,
         include_test_cases=include_test_cases,
         max_message_length=max_message_length,
+        strict=strict,
+        fail_fast=fail_fast,
+        with_subchart=with_subchart,
+        skip_schema_validation=skip_schema_validation,
+        chart_tests_path=chart_tests_path,
+        debug=debug,
     )

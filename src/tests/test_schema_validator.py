@@ -40,14 +40,24 @@ def test_get_schema_success():
         mock_get.assert_called_once()
 
 
-def test_get_schema_failure():
+def test_get_schema_network_failure_fallback():
     with patch("requests.get") as mock_get:
         mock_get.side_effect = requests.RequestException("Network error")
-
         _get_schema.cache_clear()
 
-        with pytest.raises(requests.RequestException):
-            _get_schema("http://example.com/schema.json")
+        # Should successfully load bundled schema
+        result = _get_schema("http://example.com/schema.json")
+        assert isinstance(result, dict)
+
+
+def test_get_schema_total_failure():
+    with patch("requests.get") as mock_get:
+        mock_get.side_effect = requests.RequestException("Network error")
+        with patch("pathlib.Path.exists", return_value=False):
+            _get_schema.cache_clear()
+
+            with pytest.raises(requests.RequestException):
+                _get_schema("http://example.com/schema.json")
 
 
 @patch("tools.schema_validator._get_schema")
