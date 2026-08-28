@@ -2,24 +2,47 @@
 
 This is a Model Context Protocol (MCP) server that provides tools for running and managing [helm-unittest](https://github.com/helm-unittest/helm-unittest). It allows AI assistants to discover, validate, and execute Helm unit tests within a project.
 
+📖 **[Full Documentation →](docs/index.md)**
+
 ## Features
 
 - **Test Discovery**: Recursively find all YAML test suites in a directory.
 - **Schema Validation**: Validate test files against the official `helm-unittest` JSON schema.
-- **Test Execution**: Run tests using the `helm unittest` CLI and receive structured results (JUnit/xUnit/NUnit formats).
-- **Snapshot Support**: Tools for updating test snapshots.
+- **Test Execution**: Run tests using the `helm unittest` CLI and receive structured results (JUnit/xUnit/NUnit/Sonar formats).
+- **Parallel Execution**: Run test suites concurrently with `run_tests_parallel` for faster feedback.
+- **Snapshot Management**: Create, diff, update, and clean snapshot files.
+- **Coverage Reporting**: Analyse template coverage across a Helm chart.
+- **Debug Output**: Inspect rendered manifests to troubleshoot failing assertions.
+- **MCP Prompts**: Pre-built prompt templates to guide the LLM through common workflows.
+- **MCP Resources**: Built-in assertion and mocking reference guides available to the LLM.
 
 ## Project Structure
 
 The project follows a modular structure optimized for MCP:
 
 - `src/`: Core application source code.
-  - `tools/`: MCP tool implementations (test discovery, execution, validation).
-  - `prompt/`: MCP prompt templates to guide the LLM in writing or debugging tests.
+  - `tools/`: MCP tool implementations (test discovery, execution, validation, coverage, snapshots, debug).
+  - `prompt/`: MCP prompt templates to guide the LLM in writing, running, or debugging tests.
   - `utils/`: Shared utilities, DTOs, and result parsers.
-  - `tests/`: Comprehensive unit tests for the server logic.
+  - `resources/`: MCP resources — JSON schema, assertion reference, mocking guide.
+  - `tests/`: Comprehensive unit and integration tests for the server logic.
 - `example/`: A sample Helm chart with accompanying `helm-unittest` YAML files to demonstrate usage.
+- `docs/`: Full project documentation (see below).
 - `pyproject.toml`: Project configuration and dependency management via `uv`.
+
+## Documentation
+
+| Page | Description |
+|---|---|
+| [Architecture](docs/architecture.md) | High-level design, module map, and data-flow diagrams |
+| [Tools Reference](docs/tools.md) | Every MCP tool with full parameter and return-type docs |
+| [Prompts Reference](docs/prompts.md) | Prompt templates and when to use each |
+| [Utils & DTOs](docs/utils.md) | Shared utilities and all data-transfer objects |
+| [Resources Reference](docs/resources.md) | Static MCP resources (schema, assertion guide, mocking guide) |
+| [Configuration & Setup](docs/setup.md) | Prerequisites, install options, and MCP client config |
+| [Development Guide](docs/development.md) | Running tests, linting, and contributing |
+| [Example Chart](docs/example.md) | Walkthrough of the bundled sample chart |
+
 
 ## Prerequisites
 
