@@ -155,12 +155,15 @@ def run_tests_parallel(
     chart_tests_path: Optional[str] = None,
     debug: bool = False,
 ) -> TestResultSummary:
-    """Run helm unit tests in parallel, grouped by suite.
+    """Run helm unit tests in parallel, grouped by suite. This is the recommended
+    default tool for running tests.
 
-    Discovers test files using get_tests, groups them by suite name,
-    then executes each suite group in parallel using a thread pool.
-    Tests within the same suite are executed sequentially to maintain
-    ordering guarantees.
+    Use this tool whenever the user wants to run tests for a Helm chart. It
+    automatically discovers test files, groups them by suite name, and executes
+    suite groups in parallel using a thread pool for faster results. Tests within
+    the same suite are executed sequentially to maintain ordering guarantees.
+
+    Only fall back to `run_unittest` when targeting a single, specific test file.
 
     Args:
         dir_path: Path to the directory containing test files

@@ -131,7 +131,11 @@ def run_unittest(
     chart_tests_path: Optional[str] = None,
     debug: bool = False,
 ) -> TestResultSummary:
-    """Run helm unit tests and return a summary of the results.
+    """Run helm unit tests sequentially for a specific test file or glob pattern.
+
+    Use this tool for targeted, single-file test execution. For running all tests
+    in a directory, prefer `run_tests_parallel` which discovers tests automatically,
+    groups them by suite, and executes suites in parallel for faster results.
 
     Args:
         test_suite_files (str): Glob pattern for test suite files (e.g. "tests/*_test.yaml")
