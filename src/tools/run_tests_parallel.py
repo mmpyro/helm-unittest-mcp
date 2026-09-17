@@ -3,7 +3,7 @@ import os
 import time
 from typing import Optional
 from collections import defaultdict
-from utils.mcp import Server
+from utils.mcp import Server, tool
 from utils.dtos import TestFile, TestResultSummary, TestCaseResult
 from tools.run_tests import _run_unittest_internal
 from tools.get_tests import get_tests
@@ -138,7 +138,7 @@ def _run_suite(
     return _merge_summaries(summaries)
 
 
-@mcp.tool()
+@tool()
 def run_tests_parallel(
     dir_path: str,
     chart_path: str,

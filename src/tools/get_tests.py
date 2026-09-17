@@ -2,7 +2,7 @@
 import os
 import re
 import yaml
-from utils.mcp import Server
+from utils.mcp import Server, tool
 from utils.dtos import TestFile
 from typing import Optional
 
@@ -42,7 +42,7 @@ _DuplicateAnchorSafeLoader.compose_node = _compose_node_allow_duplicates  # type
 mcp = Server().mcp
 
 
-@mcp.tool()
+@tool(read_only=True, idempotent=True)
 def get_tests(
     dir_path: str,
     pattern: Optional[str] = "",
@@ -139,7 +139,7 @@ def get_tests(
     return test_files
 
 
-@mcp.tool()
+@tool(read_only=True, idempotent=True)
 def get_test_from_file(test_file_path: str, include_release: bool = False) -> TestFile:
     """Get the helm unittests from the specified file.
 

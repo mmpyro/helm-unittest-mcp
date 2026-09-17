@@ -3,7 +3,7 @@ import tempfile
 import os
 import time
 from typing import Optional, cast
-from utils.mcp import Server
+from utils.mcp import Server, tool
 from utils.parser import TestResultParser, TestFormat
 from utils.dtos import TestResultSummary
 
@@ -115,7 +115,7 @@ def _run_unittest_internal(
                 pass
 
 
-@mcp.tool()
+@tool()
 def run_unittest(
     test_suite_files: str,
     chart_path: str,
@@ -176,7 +176,7 @@ def run_unittest(
     )
 
 
-@mcp.tool()
+@tool(destructive=True)
 def update_snapshot(
     test_suite_files: str,
     chart_path: str,

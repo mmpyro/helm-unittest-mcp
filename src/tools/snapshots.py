@@ -2,7 +2,7 @@ import os
 import difflib
 import yaml
 from typing import Optional
-from utils.mcp import Server
+from utils.mcp import Server, tool
 from utils.dtos import (
     SnapshotFile,
     SnapshotEntry,
@@ -68,7 +68,7 @@ def _parse_snapshot_file(snap_path: str, chart_path: str) -> SnapshotFile:
     )
 
 
-@mcp.tool()
+@tool(read_only=True, idempotent=True)
 def get_snapshots(
     chart_path: str,
     test_file_path: Optional[str] = None,
@@ -116,7 +116,7 @@ def _normalize_yaml_str(yaml_str: str) -> str:
     return yaml_str.strip()
 
 
-@mcp.tool()
+@tool(read_only=True, idempotent=True)
 def diff_snapshot(
     chart_path: str,
     test_file_path: str,
@@ -219,7 +219,7 @@ def diff_snapshot(
     )
 
 
-@mcp.tool()
+@tool(destructive=True)
 def clean_snapshots(
     chart_path: str,
     dry_run: bool = True,

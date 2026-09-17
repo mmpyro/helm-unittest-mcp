@@ -6,7 +6,7 @@ from jsonschema import validate, ValidationError
 from pathlib import Path
 from typing import Optional
 from functools import lru_cache
-from utils.mcp import Server
+from utils.mcp import Server, tool
 from utils.dtos import ValidationResult, BatchValidationSummary
 
 
@@ -31,7 +31,7 @@ def _get_schema(url: str) -> dict:
         raise
 
 
-@mcp.tool()
+@tool(read_only=True, idempotent=True)
 def validate_schema(test_file_path: str) -> ValidationResult:
     """
     Validate a helm-unittest YAML test file against the official JSON schema.
@@ -115,7 +115,7 @@ def validate_schema(test_file_path: str) -> ValidationResult:
         )
 
 
-@mcp.tool()
+@tool(read_only=True, idempotent=True)
 def validate_tests(
     dir_path: str,
     pattern: Optional[str] = "",

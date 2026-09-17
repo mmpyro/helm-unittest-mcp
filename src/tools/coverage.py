@@ -2,7 +2,7 @@ import os
 import re
 import yaml
 from typing import Optional
-from utils.mcp import Server
+from utils.mcp import Server, tool
 from utils.dtos import TemplateCoverage, CoverageReport
 
 
@@ -27,7 +27,7 @@ def _normalize_template_ref(ref: str) -> str:
     return ref
 
 
-@mcp.tool()
+@tool(read_only=True, idempotent=True)
 def get_test_coverage(
     chart_path: str,
     tests_dir: str = "tests",

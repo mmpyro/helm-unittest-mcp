@@ -1,7 +1,7 @@
 import os
 import re
 import subprocess
-from utils.mcp import Server
+from utils.mcp import Server, tool
 
 
 mcp = Server().mcp
@@ -38,7 +38,7 @@ def _extract_rendered_templates_from_debug(debug_text: str) -> dict[str, str]:
     return templates
 
 
-@mcp.tool()
+@tool(read_only=True, idempotent=True)
 def get_rendered_debug_output(
     chart_path: str,
     test_suite_files: str = "tests/*_test.yaml",
