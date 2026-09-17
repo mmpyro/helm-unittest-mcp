@@ -2,7 +2,7 @@ import pytest
 import requests
 from unittest.mock import patch, mock_open, MagicMock
 from tools.schema_validator import validate_schema, validate_tests, _get_schema
-from utils.dtos import ValidationResult
+from utils.dtos import ValidationResult, BatchValidationSummary
 
 
 # Sample Data
@@ -144,7 +144,7 @@ def test_validate_tests_success(mock_validate, mock_walk, mock_isdir, mock_exist
         ValidationResult(success=False, message="Fail", errors=["Err"]),
     ]
 
-    results = validate_tests("/root")
+    results = validate_tests("/root", return_summary=False)
 
     assert isinstance(results, list)
     assert len(results) == 2
@@ -158,8 +158,6 @@ def test_validate_tests_success(mock_validate, mock_walk, mock_isdir, mock_exist
 @patch("os.walk")
 @patch("tools.schema_validator.validate_schema")
 def test_validate_tests_options(mock_validate, mock_walk, mock_isdir, mock_exists):
-    from utils.dtos import BatchValidationSummary
-
     mock_exists.return_value = True
     mock_isdir.return_value = True
     mock_walk.return_value = [("/root", [], ["valid.yaml", "invalid.yaml"])]
@@ -170,7 +168,7 @@ def test_validate_tests_options(mock_validate, mock_walk, mock_isdir, mock_exist
     ]
 
     # Test only_failures=True
-    failed_results = validate_tests("/root", only_failures=True)
+    failed_results = validate_tests("/root", only_failures=True, return_summary=False)
     assert isinstance(failed_results, list)
     assert len(failed_results) == 1
     assert failed_results[0].success is False
@@ -198,10 +196,15 @@ def test_validate_tests_invalid_dir(mock_isdir, mock_exists):
     with pytest.raises(FileNotFoundError):
         validate_tests("/invalid")
 
+    # A path that is not a directory is now validated as a single file
     mock_exists.return_value = True
     mock_isdir.return_value = False
-    with pytest.raises(NotADirectoryError):
-        validate_tests("/not_a_dir")
+    with patch("tools.schema_validator.validate_schema") as mock_validate:
+        mock_validate.return_value = ValidationResult(success=True, message="OK")
+        summary = validate_tests("/not_a_dir")
+    mock_validate.assert_called_once_with("/not_a_dir")
+    assert isinstance(summary, BatchValidationSummary)
+    assert summary.total_files == 1
 
 
 def test_validate_tests_invalid_pattern():

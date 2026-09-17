@@ -151,3 +151,87 @@ def test_diff_snapshot_matches_and_mismatches(mock_debug, tmp_path):
     assert mismatch_res.has_diff is True
     assert mismatch_res.diff is not None
     assert "-apiVersion: v1" in mismatch_res.diff or "+apiVersion: v1" in mismatch_res.diff or "changed" in mismatch_res.diff
+
+
+def _chart_with_snapshot(tmp_path, snap_text):
+    chart_dir = tmp_path / "my-chart"
+    (chart_dir / "tests" / "__snapshot__").mkdir(parents=True)
+    test_yaml = chart_dir / "tests" / "app_test.yaml"
+    test_yaml.write_text(yaml.dump({"suite": "s", "tests": [{"it": "it1"}]}))
+    (chart_dir / "tests" / "__snapshot__" / "app_test.yaml.snap").write_text(snap_text)
+    return chart_dir, test_yaml
+
+
+def test_get_snapshots_names_only_omits_bodies(tmp_path):
+    chart_dir, test_yaml = _chart_with_snapshot(
+        tmp_path, "it1 1:\n  - apiVersion: v1\n    kind: Service\n"
+    )
+
+    names_only = get_snapshots(str(chart_dir))
+    assert names_only[0].snapshots[0].name == "it1 1"
+    assert names_only[0].snapshots[0].content.startswith("<")
+    assert names_only[0].snapshots[0].content.endswith("chars>")
+
+    full = get_snapshots(str(chart_dir), names_only=False)
+    assert "kind: Service" in full[0].snapshots[0].content
+
+
+def test_get_snapshots_pagination(tmp_path):
+    chart_dir = tmp_path / "chart"
+    snap_dir = chart_dir / "tests" / "__snapshot__"
+    snap_dir.mkdir(parents=True)
+    for i in range(3):
+        (snap_dir / f"s{i}_test.yaml.snap").write_text("a 1:\n  - kind: Service\n")
+
+    assert len(get_snapshots(str(chart_dir))) == 3
+    assert len(get_snapshots(str(chart_dir), limit=2)) == 2
+    assert len(get_snapshots(str(chart_dir), offset=2)) == 1
+
+
+@patch("tools.snapshots.get_rendered_debug_output")
+def test_diff_snapshot_compares_entry_against_its_own_template(mock_debug, tmp_path):
+    """A snapshot entry must be diffed against the manifest it came from.
+
+    Previously every entry was diffed against the concatenation of all rendered
+    templates, so an unchanged snapshot still reported a diff whenever the chart
+    rendered more than one template.
+    """
+    chart_dir, test_yaml = _chart_with_snapshot(
+        tmp_path, "it1 1:\n  - apiVersion: v1\n    kind: Service\n"
+    )
+
+    mock_debug.return_value = {
+        "templates/service.yaml": "apiVersion: v1\nkind: Service\n",
+        "templates/deployment.yaml": "apiVersion: apps/v1\nkind: Deployment\n",
+    }
+
+    res = diff_snapshot(str(chart_dir), str(test_yaml))
+    assert res.has_diff is False
+
+
+@patch("tools.snapshots.get_rendered_debug_output")
+def test_diff_snapshot_reports_unmatched_entries(mock_debug, tmp_path):
+    chart_dir, test_yaml = _chart_with_snapshot(
+        tmp_path, "it1 1:\n  - apiVersion: v1\n    kind: Service\n"
+    )
+    mock_debug.return_value = {
+        "templates/cm.yaml": "apiVersion: v1\nkind: ConfigMap\n",
+    }
+
+    res = diff_snapshot(str(chart_dir), str(test_yaml))
+    assert res.has_diff is True
+    assert "could not be matched" in res.message
+
+
+@patch("tools.snapshots.get_rendered_debug_output")
+def test_diff_snapshot_truncates(mock_debug, tmp_path):
+    chart_dir, test_yaml = _chart_with_snapshot(
+        tmp_path, "it1 1:\n  - apiVersion: v1\n    kind: Service\n"
+    )
+    mock_debug.return_value = {
+        "templates/service.yaml": "apiVersion: v1\nkind: Service\nmetadata:\n  name: x\n"
+    }
+
+    res = diff_snapshot(str(chart_dir), str(test_yaml), max_chars=20)
+    assert res.diff is not None
+    assert "truncated" in res.diff

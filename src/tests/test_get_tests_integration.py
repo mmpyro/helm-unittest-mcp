@@ -213,14 +213,15 @@ class TestGetTestsIntegration:
         with pytest.raises(FileNotFoundError):
             get_tests("/nonexistent/directory/path")
 
-    def test_get_tests_file_instead_of_directory(self, ingress_tests_dir):
-        """Test that passing a file path instead of directory raises NotADirectoryError."""
-        # Get a file path
+    def test_get_tests_accepts_a_single_file(self, ingress_tests_dir):
+        """A file path returns that one suite rather than raising."""
         test_file = os.path.join(ingress_tests_dir, "ingress_example_test.yaml")
         if not os.path.exists(test_file):
             pytest.skip(f"Test file not found: {test_file}")
-        with pytest.raises(NotADirectoryError):
-            get_tests(test_file)
+
+        result = get_tests(test_file)
+        assert len(result) == 1
+        assert result[0].file_path == test_file
 
     def test_get_tests_invalid_regex_pattern(self, example_tests_dir):
         """Test that invalid regex pattern raises ValueError."""

@@ -218,11 +218,17 @@ def test_get_tests_dir_not_found(mock_exists):
 
 @patch("os.path.exists")
 @patch("os.path.isdir")
-def test_get_tests_not_a_directory(mock_isdir, mock_exists):
+def test_get_tests_single_file(mock_isdir, mock_exists):
     mock_exists.return_value = True
     mock_isdir.return_value = False
-    with pytest.raises(NotADirectoryError):
-        get_tests("/path/to/file")
+    with patch("tools.get_tests.get_test_from_file") as mock_from_file:
+        mock_from_file.return_value = TestFile(
+            suite="s", tests=["t"], file_path="/path/to/file"
+        )
+        result = get_tests("/path/to/file")
+
+    mock_from_file.assert_called_once_with("/path/to/file", include_release=False)
+    assert [f.file_path for f in result] == ["/path/to/file"]
 
 
 @patch("os.path.exists")

@@ -94,13 +94,13 @@ Instructs the LLM to **run all unit tests** for a Helm chart and present a clear
 
 ### Workflow the LLM follows
 
-1. Call `run_tests_parallel(dir_path=test_directory, chart_path=chart_path)` (preferred).
+1. Call `run_tests(chart_path=chart_path, path=test_directory)`.
 2. Parse the returned [`TestResultSummary`](./utils.md#testresultsummary).
 3. Present: total / passed / failed / skipped counts, wall-clock time.
 4. List each failed test case with suite name and (truncated) error message.
 5. Offer to investigate failures.
 
-> **Fallback**: If parallel execution is unsuitable, fall back to `run_unittest(test_suite_files=…, chart_path=…)`.
+> A directory `path` runs suites in parallel; pass a file or glob to run one suite sequentially.
 
 ### Parameters
 
@@ -109,7 +109,7 @@ Instructs the LLM to **run all unit tests** for a Helm chart and present a clear
 | `chart_path` | `str` | — | Path to the Helm chart |
 | `test_directory` | `str` | `"tests"` | Relative path to the tests folder |
 | `test_pattern` | `str` | `""` | Regex filter for test file names |
-| `test_suite_files` | `str` | `"tests/*_test.yaml"` | Glob for sequential fallback |
+| `test_suite_files` | `str` | `"tests/*_test.yaml"` | Glob for single-file runs |
 
 ---
 
@@ -127,7 +127,7 @@ Instructs the LLM to **regenerate snapshot files** after intentional template ch
 ### Workflow the LLM follows
 
 1. Inform the user which snapshots will be updated.
-2. Call `update_snapshot(test_suite_files=…, chart_path=…)`.
+2. Call `run_tests(chart_path=…, path=…, update_snapshot=True)`.
 3. Report the execution summary.
 4. Remind the user to review changes in `__snapshot__/` directories.
 

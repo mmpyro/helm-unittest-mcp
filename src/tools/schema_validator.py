@@ -4,9 +4,10 @@ import yaml
 import requests
 from jsonschema import validate, ValidationError
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 from functools import lru_cache
-from utils.mcp import Server
+from pydantic import Field
+from utils.mcp import Server, tool
 from utils.dtos import ValidationResult, BatchValidationSummary
 
 
@@ -31,37 +32,8 @@ def _get_schema(url: str) -> dict:
         raise
 
 
-@mcp.tool()
 def validate_schema(test_file_path: str) -> ValidationResult:
-    """
-    Validate a helm-unittest YAML test file against the official JSON schema.
-
-    This function fetches the helm-unittest JSON schema from the official repository
-    and validates the provided YAML test file against it. It ensures that the test
-    file conforms to the expected structure and contains all required fields.
-
-    Args:
-        test_file_path (str): Path to the YAML test file to validate. Can be either
-                             an absolute path or a relative path.
-
-    Returns:
-        ValidationResult: A dataclass containing validation results with the following attributes:
-            - success (bool): True if validation passed, False otherwise
-            - message (str): Human-readable message describing the result
-            - errors (list[str] | None): List of validation error messages if validation passed, None otherwise
-
-    Raises:
-        FileNotFoundError: If the test file does not exist at the specified path
-        yaml.YAMLError: If the test file contains invalid YAML syntax
-        requests.RequestException: If the schema cannot be fetched from the URL
-
-    Example:
-        >>> result = validate_schema("tests/my-test_test.yaml")
-        >>> if result["success"]:
-        ...     print("Validation passed!")
-        ... else:
-        ...     print(f"Validation failed: {result['errors']}")
-    """
+    """Validate one helm-unittest YAML file against the official JSON schema."""
     try:
         # Fetch the JSON schema (cached)
         schema = _get_schema(schema_url)
@@ -115,41 +87,22 @@ def validate_schema(test_file_path: str) -> ValidationResult:
         )
 
 
-@mcp.tool()
+@tool(read_only=True, idempotent=True)
 def validate_tests(
-    dir_path: str,
-    pattern: Optional[str] = "",
-    only_failures: bool = False,
-    return_summary: bool = False,
+    dir_path: Annotated[
+        str, Field(description="Directory to search, or a single test file")
+    ],
+    pattern: Annotated[
+        Optional[str], Field(description="Regex over filenames; empty matches every .yaml")
+    ] = "",
+    only_failures: Annotated[
+        bool, Field(description="Return only the files that failed validation")
+    ] = False,
+    return_summary: Annotated[
+        bool, Field(description="Return counts plus failures instead of one result per file")
+    ] = True,
 ) -> list[ValidationResult] | BatchValidationSummary:
-    """Recursively validate all test files from a directory and its subdirectories.
-
-    This function walks through the specified directory and validates each matching
-    test file against the helm-unittest JSON schema. It follows the same pattern
-    as get_tests but returns validation results instead of parsed test data.
-
-    Args:
-        dir_path (str): Path to the directory to search for test files
-        pattern (Optional[str]): Optional regex pattern to filter files. If empty or None,
-                                matches all .yaml files. Otherwise, uses the provided regex pattern.
-        only_failures (bool): If True, returns only failed ValidationResult objects.
-        return_summary (bool): If True, returns a BatchValidationSummary object.
-
-    Returns:
-        list[ValidationResult] | BatchValidationSummary: List of results or aggregate summary.
-
-    Raises:
-        ValueError: If dir_path is empty, not a string, or pattern is invalid regex
-        FileNotFoundError: If the directory doesn't exist
-        NotADirectoryError: If dir_path is not a directory
-
-    Example:
-        >>> results = validate_tests("tests/", pattern=r".*_test\\.yaml$")
-        >>> for result in results:
-        ...     if not result.success:
-        ...         print(f"Failed: {result.message}")
-        ...         print(f"Errors: {result.errors}")
-    """
+    """Recursively validate every helm-unittest file in a directory against the official JSON schema."""
     # Validate input
     if not dir_path:
         raise ValueError("dir_path cannot be empty")
@@ -162,7 +115,7 @@ def validate_tests(
         raise FileNotFoundError(f"Directory not found: {dir_path}")
 
     if not os.path.isdir(dir_path):
-        raise NotADirectoryError(f"Path is not a directory: {dir_path}")
+        return _summarize([validate_schema(dir_path)], only_failures, return_summary)
 
     # Determine the pattern to use
     if pattern is None or pattern.strip() == "":
@@ -199,16 +152,20 @@ def validate_tests(
                         )
                     )
 
+    return _summarize(validation_results, only_failures, return_summary)
+
+
+def _summarize(
+    results: list[ValidationResult],
+    only_failures: bool,
+    return_summary: bool,
+) -> list[ValidationResult] | BatchValidationSummary:
+    failures = [r for r in results if not r.success]
     if return_summary:
-        failures = [r for r in validation_results if not r.success]
         return BatchValidationSummary(
-            total_files=len(validation_results),
-            valid_files=len(validation_results) - len(failures),
+            total_files=len(results),
+            valid_files=len(results) - len(failures),
             invalid_files=len(failures),
             failures=failures,
         )
-
-    if only_failures:
-        return [r for r in validation_results if not r.success]
-
-    return validation_results
+    return failures if only_failures else results

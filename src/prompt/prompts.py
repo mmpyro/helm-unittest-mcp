@@ -9,8 +9,7 @@ def helm_unittest_assistant(test_directory: str, pattern: str = "") -> str:
     """Create a prompt to assist with analyzing Helm unittest files.
 
     This prompt helps users work with Helm unittest test files by providing
-    context and guidance on how to use the available tools (get_tests and
-    get_test_from_file) to analyze test suites.
+    context and guidance on how to use the get_tests tool to analyze test suites.
 
     Args:
         test_directory: Path to the directory containing Helm unittest files
@@ -31,10 +30,9 @@ def helm_unittest_assistant(test_directory: str, pattern: str = "") -> str:
 
 **Available Tools:**
 1. `get_tests(dir_path, pattern, include_release=False, suite_pattern=None, limit=None, offset=0)` - \
-Recursively finds and parses test files in a directory. Supports regex filtering by filename (`pattern`) or \
-suite name (`suite_pattern`), pagination (`offset`/`limit`), and optional `release` dictionary inclusion \
-(`include_release=False` by default to reduce output).
-2. `get_test_from_file(test_file_path, include_release=False)` - Parses a single test file (`include_release=False` by default).
+Finds and parses test files. `dir_path` takes a directory or a single test file. Supports regex filtering by \
+filename (`pattern`) or suite name (`suite_pattern`), pagination (`offset`/`limit`), and optional `release` \
+dictionary inclusion (`include_release=False` by default to reduce output).
 
 **Your Responsibilities:**
 - Help users discover and analyze Helm unittest test files
@@ -77,15 +75,15 @@ def validate_helm_tests(test_directory: str, pattern: str = "") -> str:
 - File filter: {pattern_info}
 
 **Validation Tools:**
-1. `validate_schema(test_file_path)` - Validates a single test file against the official JSON schema.
-2. `validate_tests(dir_path, pattern, only_failures=False, return_summary=False)` - \
-Recursively validates all matching test files in a directory. Can filter to return only failed validations \
-(`only_failures=True`) or return an aggregate summary (`return_summary=True`).
+1. `validate_tests(dir_path, pattern, only_failures=False, return_summary=True)` - \
+Validates test files against the official JSON schema. `dir_path` takes a directory or a single test file. \
+Returns counts plus the failures by default; pass `return_summary=False` for one result per file, or \
+`only_failures=True` to list just the failures.
 
 **Your Workflow:**
 - Call `validate_tests` to check the quality and schema compliance of all test files in the specified directory.
 - For each file that fails validation, provide a detailed report of the schema errors (e.g., missing required fields, incorrect data types).
-- Use `validate_schema` if the user wants to focus on a specific file.
+- Pass a single file path as `dir_path` if the user wants to focus on one file.
 - Explain the validation errors to the user in a helpful manner and suggest how to fix them to match the official `helm-unittest` schema.
 
 **Common Schema Issues to Watch For:**
@@ -105,14 +103,14 @@ def run_helm_tests(
 ) -> str:
     """Create a prompt to assist with running Helm unittests and analyzing results.
 
-    This prompt guides the assistant in executing Helm unittests using parallel
-    execution by default and providing a clear, structured summary of the test outcomes.
+    This prompt guides the assistant in executing Helm unittests and providing a
+    clear, structured summary of the test outcomes.
 
     Args:
         chart_path: Path to the Helm chart to be tested
         test_directory: Path to the directory containing test files
         test_pattern: Optional regex pattern to filter test files
-        test_suite_files: Glob pattern for test suite files (used by sequential fallback)
+        test_suite_files: Glob pattern for test suite files (used for single-file runs)
 
     Returns:
         A formatted prompt string for the assistant to run and analyze Helm tests
@@ -128,22 +126,24 @@ def run_helm_tests(
 - Chart Path: {chart_path}
 - Test Directory: {test_directory}
 - File Filter: {pattern_info}
-- Test Suite Pattern (sequential fallback): {test_suite_files}
+- Test Suite Pattern (single-file runs): {test_suite_files}
 
 **Available Tools:**
-1. `run_tests_parallel(dir_path, chart_path, pattern, values_path, output_type, max_workers, include_test_cases="failed_only", max_message_length=1000)` - \
-**Default.** Discovers tests, groups by suite, and runs suites in parallel. By default only failed test cases are returned (`include_test_cases="failed_only"`).
-2. `run_unittest(test_suite_files, chart_path, values_path, output_type, include_test_cases="failed_only", max_message_length=1000)` - \
-Runs Helm unittests sequentially. Use as a fallback for single-file execution.
+1. `run_tests(chart_path, path, update_snapshot=False, values_path, include_test_cases="failed_only", \
+max_message_length=1000, max_test_cases=50, max_workers=None, output_type="xunit")` - \
+Runs Helm unittests. A directory `path` is discovered and its suites run in parallel; a file or glob `path` runs \
+sequentially. By default only failed test cases are returned (`include_test_cases="failed_only"`), capped at \
+`max_test_cases`.
 
 **Your Workflow:**
-1. Call `run_tests_parallel` with `dir_path="{test_directory}"` and `chart_path="{chart_path}"` to run all tests in parallel.
+1. Call `run_tests` with `chart_path="{chart_path}"` and `path="{test_directory}"` to run all tests.
 2. Analyze the `TestResultSummary` returned by the tool.
 3. Present the results to the user in a clear, summarized format:
     - Overview: Total tests, Passed, Failed, Skipped, aggregate Execution Time (`time`), and wall-clock Elapsed Time (`elapsed_time`).
     - Note that passing test cases are excluded from `test_cases` list by default \
 (`include_test_cases="failed_only"`), but count towards totals (`passed`, `total`). \
-Set `include_test_cases="all"` if all individual passing test cases are needed.
+Set `include_test_cases="all"` if all individual passing test cases are needed, and raise `max_test_cases` \
+if the list is truncated.
     - If there are failures: List each failed test case, including its suite name and error message (truncated to `max_message_length` if very long).
     - If all tests pass: Congratulate the user and highlight the successful execution.
 4. If there are failures, offer to help investigate specific test files or explain the error messages based on your knowledge of Helm and the `helm-unittest` plugin.
@@ -158,7 +158,7 @@ def update_helm_snapshots(
     """Create a prompt to assist with updating Helm unittest snapshots.
 
     This prompt guides the assistant in updating snapshots for Helm unittests using
-    the update_snapshot tool and providing a clear summary of the updated results.
+    run_tests with update_snapshot=True, and providing a clear summary of the results.
 
     Args:
         chart_path: Path to the Helm chart
@@ -175,12 +175,13 @@ def update_helm_snapshots(
 - Test Suite Pattern: {test_suite_files}
 
 **Available Tools:**
-1. `update_snapshot(test_suite_files, chart_path, values_path, output_type, include_test_cases="failed_only", max_message_length=1000)` - \
-Updates snapshot files and returns summary (`include_test_cases="failed_only"` by default).
+1. `run_tests(chart_path, path, update_snapshot=True, values_path, output_type, include_test_cases="failed_only", max_message_length=1000)` - \
+With `update_snapshot=True`, rewrites snapshot files and returns a summary (`include_test_cases="failed_only"` by default).
+2. `diff_snapshot(chart_path, test_file_path, test_it=None)` - Shows what would change before you commit to it.
 
 **Your Workflow:**
 1. Inform the user that you are about to update the snapshots for the tests matching `{test_suite_files}` in `{chart_path}`.
-2. Call `update_snapshot` with the provided parameters.
+2. Call `run_tests` with `update_snapshot=True` and the provided parameters.
 3. Analyze the `TestResultSummary` returned by the tool.
 4. Present the results to the user:
     - Overview of the updated snapshots and test execution results.

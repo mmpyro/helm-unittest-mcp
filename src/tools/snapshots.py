@@ -1,8 +1,10 @@
 import os
 import difflib
 import yaml
-from typing import Optional
-from utils.mcp import Server
+from typing import Annotated, Optional
+from pydantic import Field
+from utils.mcp import tool
+from utils.truncate import truncate_text
 from utils.dtos import (
     SnapshotFile,
     SnapshotEntry,
@@ -10,9 +12,6 @@ from utils.dtos import (
     SnapshotCleanResult,
 )
 from tools.debug import get_rendered_debug_output
-
-
-mcp = Server().mcp
 
 
 def _parse_snapshot_file(snap_path: str, chart_path: str) -> SnapshotFile:
@@ -68,21 +67,23 @@ def _parse_snapshot_file(snap_path: str, chart_path: str) -> SnapshotFile:
     )
 
 
-@mcp.tool()
+@tool(read_only=True, idempotent=True)
 def get_snapshots(
     chart_path: str,
-    test_file_path: Optional[str] = None,
+    test_file_path: Annotated[
+        Optional[str], Field(description="Only snapshots belonging to this test file")
+    ] = None,
+    names_only: Annotated[
+        bool,
+        Field(
+            description="Return entry names without their stored manifests. "
+            "The manifests are large; fetch them only when you need to read one."
+        ),
+    ] = True,
+    limit: Optional[int] = None,
+    offset: int = 0,
 ) -> list[SnapshotFile]:
-    """Discover, parse, and return all snapshot files and entries in a Helm chart.
-
-    Args:
-        chart_path (str): Path to the Helm chart directory
-        test_file_path (str, optional): If provided, returns snapshots specifically
-                                        associated with this test file.
-
-    Returns:
-        list[SnapshotFile]: List of discovered snapshot files with their individual entries.
-    """
+    """List the snapshot files in a chart and the entries each one stores."""
     if not os.path.exists(chart_path):
         raise FileNotFoundError(f"Chart directory not found: {chart_path}")
 
@@ -94,7 +95,7 @@ def get_snapshots(
         snap_path = os.path.join(test_dir, "__snapshot__", f"{test_filename}.snap")
         if os.path.exists(snap_path):
             snapshot_files.append(_parse_snapshot_file(snap_path, chart_path))
-        return snapshot_files
+        return [_strip_bodies(f) for f in snapshot_files] if names_only else snapshot_files
 
     for root, dirs, files in os.walk(chart_path):
         if os.path.basename(root) == "__snapshot__":
@@ -103,7 +104,38 @@ def get_snapshots(
                     full_snap_path = os.path.join(root, file)
                     snapshot_files.append(_parse_snapshot_file(full_snap_path, chart_path))
 
-    return snapshot_files
+    if offset > 0:
+        snapshot_files = snapshot_files[offset:]
+    if limit is not None and limit >= 0:
+        snapshot_files = snapshot_files[:limit]
+
+    return [_strip_bodies(f) for f in snapshot_files] if names_only else snapshot_files
+
+
+def _strip_bodies(snap_file: SnapshotFile) -> SnapshotFile:
+    """Replace each entry's stored manifest with its size, keeping the names."""
+    return SnapshotFile(
+        file_path=snap_file.file_path,
+        test_file_path=snap_file.test_file_path,
+        snapshots=[
+            SnapshotEntry(name=e.name, content=f"<{len(e.content)} chars>")
+            for e in snap_file.snapshots
+        ],
+        is_orphaned=snap_file.is_orphaned,
+    )
+
+
+def _manifest_identity(yaml_str: str) -> Optional[tuple[str, str]]:
+    """Identify a rendered manifest by its kind and metadata.name, if it has both."""
+    try:
+        for doc in yaml.safe_load_all(yaml_str):
+            if isinstance(doc, dict) and doc.get("kind"):
+                metadata = doc.get("metadata") or {}
+                name = metadata.get("name", "") if isinstance(metadata, dict) else ""
+                return (str(doc["kind"]), str(name))
+    except Exception:
+        pass
+    return None
 
 
 def _normalize_yaml_str(yaml_str: str) -> str:
@@ -116,22 +148,16 @@ def _normalize_yaml_str(yaml_str: str) -> str:
     return yaml_str.strip()
 
 
-@mcp.tool()
+@tool(read_only=True, idempotent=True)
 def diff_snapshot(
     chart_path: str,
     test_file_path: str,
-    test_it: Optional[str] = None,
+    test_it: Annotated[
+        Optional[str], Field(description="Only the entries whose name contains this text")
+    ] = None,
+    max_chars: Annotated[int, Field(description="Cap on the returned diff")] = 20000,
 ) -> SnapshotDiffResult:
-    """Compare the stored snapshot against the rendered template output without modifying snapshots.
-
-    Args:
-        chart_path (str): Path to the Helm chart
-        test_file_path (str): Path to the test file (e.g. "tests/deployment_test.yaml")
-        test_it (str, optional): Name of a specific test case ('it' description) to diff.
-
-    Returns:
-        SnapshotDiffResult: Summary of differences, including a unified diff if mismatched.
-    """
+    """Compare a test file's stored snapshots against a fresh render, without touching them."""
     test_dir = os.path.dirname(test_file_path)
     test_filename = os.path.basename(test_file_path)
     snap_path = os.path.join(test_dir, "__snapshot__", f"{test_filename}.snap")
@@ -174,23 +200,36 @@ def diff_snapshot(
                 message=f"No snapshot entry found matching test case: '{test_it}'",
             )
 
+    # Index the rendered manifests by kind/name so each snapshot entry is diffed
+    # against the template it actually came from, not against all of them at once.
+    manifests = {k: v for k, v in rendered_output.items() if not k.startswith("__")}
+    by_identity: dict[tuple[str, str], str] = {}
+    for body in manifests.values():
+        identity = _manifest_identity(body)
+        if identity is not None:
+            by_identity.setdefault(identity, body)
+
+    all_rendered = "\n---\n".join(manifests.values())
+
     diff_lines_all: list[str] = []
     has_diff = False
+    unmatched: list[str] = []
 
     for entry in matching_entries:
         expected_norm = _normalize_yaml_str(entry.content)
-        expected_lines = expected_norm.splitlines(keepends=True)
 
-        actual_content = "\n---\n".join(
-            v for k, v in rendered_output.items() if not k.startswith("__")
-        )
-        actual_norm = _normalize_yaml_str(actual_content)
-        actual_lines = actual_norm.splitlines(keepends=True)
+        identity = _manifest_identity(entry.content)
+        actual_raw = by_identity.get(identity) if identity is not None else None
+        if actual_raw is None:
+            actual_raw = all_rendered
+            unmatched.append(entry.name)
+
+        actual_norm = _normalize_yaml_str(actual_raw)
 
         diff = list(
             difflib.unified_diff(
-                expected_lines,
-                actual_lines,
+                expected_norm.splitlines(keepends=True),
+                actual_norm.splitlines(keepends=True),
                 fromfile=f"snapshot: {entry.name}",
                 tofile="actual rendered output",
             )
@@ -205,8 +244,17 @@ def diff_snapshot(
             test_it=test_it,
             exists=True,
             has_diff=True,
-            diff="".join(diff_lines_all),
-            message="Differences found between snapshot and rendered output.",
+            diff=truncate_text("".join(diff_lines_all), max_chars),
+            message=(
+                "Differences found between snapshot and rendered output."
+                + (
+                    f" {len(unmatched)} entries could not be matched to a rendered "
+                    "manifest and were compared against the whole render: "
+                    + ", ".join(unmatched[:5])
+                    if unmatched
+                    else ""
+                )
+            ),
         )
 
     return SnapshotDiffResult(
@@ -219,21 +267,14 @@ def diff_snapshot(
     )
 
 
-@mcp.tool()
+@tool(destructive=True)
 def clean_snapshots(
     chart_path: str,
-    dry_run: bool = True,
+    dry_run: Annotated[
+        bool, Field(description="Report what would be removed without removing it")
+    ] = True,
 ) -> SnapshotCleanResult:
-    """Detect and prune orphaned snapshot files or obsolete snapshot entries for deleted tests.
-
-    Args:
-        chart_path (str): Path to the Helm chart directory
-        dry_run (bool): If True, only reports what would be deleted without making changes.
-                        If False, deletes orphaned snapshot files and prunes obsolete entries.
-
-    Returns:
-        SnapshotCleanResult: Summary of cleaned files, cleaned entry keys, and status message.
-    """
+    """Remove snapshot files and entries left behind by deleted tests."""
     if not os.path.exists(chart_path):
         raise FileNotFoundError(f"Chart directory not found: {chart_path}")
 

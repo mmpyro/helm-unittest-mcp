@@ -9,12 +9,13 @@ This is a Model Context Protocol (MCP) server that provides tools for running an
 - **Test Discovery**: Recursively find all YAML test suites in a directory.
 - **Schema Validation**: Validate test files against the official `helm-unittest` JSON schema.
 - **Test Execution**: Run tests using the `helm unittest` CLI and receive structured results (JUnit/xUnit/NUnit/Sonar formats).
-- **Parallel Execution**: Run test suites concurrently with `run_tests_parallel` for faster feedback.
+- **Parallel Execution**: `run_tests` groups suites and runs them concurrently for faster feedback.
 - **Snapshot Management**: Create, diff, update, and clean snapshot files.
 - **Coverage Reporting**: Analyse template coverage across a Helm chart.
 - **Debug Output**: Inspect rendered manifests to troubleshoot failing assertions.
 - **MCP Prompts**: Pre-built prompt templates to guide the LLM through common workflows.
 - **MCP Resources**: Built-in assertion and mocking reference guides available to the LLM.
+- **Small Context Footprint**: The tool surface costs ~1.5k tokens per session and every tool caps its output (see [Tools Reference](docs/tools.md#token-budget)).
 
 ## Project Structure
 
@@ -41,6 +42,7 @@ The project follows a modular structure optimized for MCP:
 | [Resources Reference](docs/resources.md) | Static MCP resources (schema, assertion guide, mocking guide) |
 | [Configuration & Setup](docs/setup.md) | Prerequisites, install options, and MCP client config |
 | [Development Guide](docs/development.md) | Running tests, linting, and contributing |
+| [Migrating to 2.0](docs/migration-2.0.md) | Renamed tools and changed defaults in 2.0 |
 | [Example Chart](docs/example.md) | Walkthrough of the bundled sample chart |
 
 

@@ -26,7 +26,7 @@ The schema is loaded from the bundled file:
 src/resources/schemas/helm-testsuite.json
 ```
 
-This is the same schema used by [`validate_schema`](./tools.md#validate_schema) and [`validate_tests`](./tools.md#validate_tests) as an offline fallback when the upstream GitHub URL is unreachable.
+This is the same schema used by [`validate_tests`](./tools.md#validate_tests) as an offline fallback when the upstream GitHub URL is unreachable.
 
 ---
 

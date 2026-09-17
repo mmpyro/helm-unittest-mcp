@@ -3,13 +3,10 @@ import os
 import time
 from typing import Optional
 from collections import defaultdict
-from utils.mcp import Server
 from utils.dtos import TestFile, TestResultSummary, TestCaseResult
+from utils.truncate import cap_test_cases
 from tools.run_tests import _run_unittest_internal
 from tools.get_tests import get_tests
-
-
-mcp = Server().mcp
 
 
 def _group_tests_by_suite(
@@ -85,7 +82,6 @@ def _run_suite(
     with_subchart: Optional[bool] = None,
     skip_schema_validation: bool = False,
     chart_tests_path: Optional[str] = None,
-    debug: bool = False,
 ) -> TestResultSummary:
     """Run all test files for a single suite sequentially.
 
@@ -102,7 +98,6 @@ def _run_suite(
         with_subchart: Whether to include subchart tests
         skip_schema_validation: Whether to skip schema validation
         chart_tests_path: Custom test directory location
-        debug: Whether to enable verbose debug output
 
     Returns:
         Merged TestResultSummary for the entire suite
@@ -131,61 +126,32 @@ def _run_suite(
             with_subchart=with_subchart,
             skip_schema_validation=skip_schema_validation,
             chart_tests_path=chart_tests_path,
-            debug=debug,
         )
         summaries.append(summary)
 
     return _merge_summaries(summaries)
 
 
-@mcp.tool()
-def run_tests_parallel(
+def run_parallel(
     dir_path: str,
     chart_path: str,
     pattern: Optional[str] = "",
     values_path: list[str] = [],
     output_type: str = "xunit",
     max_workers: Optional[int] = None,
+    update_snapshot: bool = False,
     include_test_cases: str = "failed_only",
     max_message_length: Optional[int] = 1000,
+    max_test_cases: Optional[int] = None,
     strict: bool = False,
     fail_fast: bool = False,
     with_subchart: Optional[bool] = None,
     skip_schema_validation: bool = False,
     chart_tests_path: Optional[str] = None,
-    debug: bool = False,
 ) -> TestResultSummary:
-    """Run helm unit tests in parallel, grouped by suite. This is the recommended
-    default tool for running tests.
+    """Discover tests under a directory, group them by suite, and run the groups in parallel.
 
-    Use this tool whenever the user wants to run tests for a Helm chart. It
-    automatically discovers test files, groups them by suite name, and executes
-    suite groups in parallel using a thread pool for faster results. Tests within
-    the same suite are executed sequentially to maintain ordering guarantees.
-
-    Only fall back to `run_unittest` when targeting a single, specific test file.
-
-    Args:
-        dir_path: Path to the directory containing test files
-        chart_path: Path to the Helm chart to test
-        pattern: Optional regex pattern to filter test files.
-                 If empty or None, matches all .yaml files.
-        values_path: Optional list of paths to values files
-        output_type: Format of the test report ("xunit", "junit", "nunit", or "sonar")
-        max_workers: Maximum number of parallel workers. If None, defaults
-                     to ThreadPoolExecutor's default.
-        include_test_cases: Which test cases to include in test_cases list:
-                            "failed_only" (default), "all", or "none".
-        max_message_length: Maximum character length for failure messages.
-        strict: Strictly parse the test suites.
-        fail_fast: Quit testing immediately on the first failed test.
-        with_subchart: Include tests of subcharts in charts folder.
-        skip_schema_validation: Skip values schema validation when rendering chart.
-        chart_tests_path: Folder location relative to chart where test suites are located.
-        debug: Enable verbose debug output from helm-unittest plugin.
-
-    Returns:
-        TestResultSummary: An aggregate summary of all test executions
+    Files within one suite run sequentially so their ordering guarantees hold.
     """
     start_time = time.perf_counter()
     test_files = get_tests(dir_path, pattern)
@@ -215,7 +181,7 @@ def run_tests_parallel(
                 chart_path,
                 values_path,
                 output_type,
-                False,
+                update_snapshot,
                 include_test_cases,
                 max_message_length,
                 strict,
@@ -223,7 +189,6 @@ def run_tests_parallel(
                 with_subchart,
                 skip_schema_validation,
                 chart_tests_path,
-                debug,
             ): suite_name
             for suite_name, suite_files in suite_groups.items()
         }
@@ -256,4 +221,5 @@ def run_tests_parallel(
                 )
 
     elapsed_time = round(time.perf_counter() - start_time, 4)
-    return _merge_summaries(suite_summaries, elapsed_time=elapsed_time)
+    merged = _merge_summaries(suite_summaries, elapsed_time=elapsed_time)
+    return cap_test_cases(merged, max_test_cases)

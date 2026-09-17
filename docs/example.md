@@ -42,7 +42,7 @@ helm unittest example/
 Or via the MCP server (ask your AI assistant):
 
 ```
-Use run_tests_parallel with dir_path="example/tests" and chart_path="example"
+Use run_tests with chart_path="example"
 ```
 
 ---
