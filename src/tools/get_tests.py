@@ -2,9 +2,10 @@
 import os
 import re
 import yaml
-from utils.mcp import Server, tool
+from utils.mcp import tool
 from utils.dtos import TestFile
-from typing import Optional
+from typing import Annotated, Optional
+from pydantic import Field
 
 
 class _DuplicateAnchorSafeLoader(yaml.SafeLoader):
@@ -39,37 +40,24 @@ def _compose_node_allow_duplicates(
 _DuplicateAnchorSafeLoader.compose_node = _compose_node_allow_duplicates  # type: ignore[assignment]
 
 
-mcp = Server().mcp
-
-
 @tool(read_only=True, idempotent=True)
 def get_tests(
-    dir_path: str,
-    pattern: Optional[str] = "",
-    include_release: bool = False,
-    suite_pattern: Optional[str] = None,
+    dir_path: Annotated[
+        str, Field(description="Directory to search, or a single test file")
+    ],
+    pattern: Annotated[
+        Optional[str], Field(description="Regex over filenames; empty matches every .yaml")
+    ] = "",
+    include_release: Annotated[
+        bool, Field(description="Include each suite's release block")
+    ] = False,
+    suite_pattern: Annotated[Optional[str], Field(description="Regex over suite names")] = None,
     limit: Optional[int] = None,
     offset: int = 0,
 ) -> list[TestFile]:
-    """Recursively get all test files from a directory and its subdirectories.
+    """List the helm-unittest suites under a directory, with the name of every test they define.
 
-    Args:
-        dir_path: Path to the directory to search for test files
-        pattern: Optional regex pattern to filter files. If empty or None,
-                matches all .yaml files. Otherwise, uses the provided regex pattern.
-        include_release: Whether to include the release dictionary in returned test files.
-                        Defaults to False to reduce output size.
-        suite_pattern: Optional regex pattern to filter by test suite name.
-        limit: Optional maximum number of test files to return.
-        offset: Optional offset for pagination (0-based index).
-
-    Returns:
-        List of TestFile objects parsed from matching files
-
-    Raises:
-        ValueError: If dir_path is empty, not a string, or regex patterns are invalid
-        FileNotFoundError: If the directory doesn't exist
-        NotADirectoryError: If dir_path is not a directory
+    Accepts a single test file too, in which case the list holds one entry.
     """
     # Validate input
     if not dir_path:
@@ -83,7 +71,7 @@ def get_tests(
         raise FileNotFoundError(f"Directory not found: {dir_path}")
 
     if not os.path.isdir(dir_path):
-        raise NotADirectoryError(f"Path is not a directory: {dir_path}")
+        return [get_test_from_file(dir_path, include_release=include_release)]
 
     # Determine the file pattern to use
     if pattern is None or pattern.strip() == "":
@@ -139,25 +127,8 @@ def get_tests(
     return test_files
 
 
-@tool(read_only=True, idempotent=True)
 def get_test_from_file(test_file_path: str, include_release: bool = False) -> TestFile:
-    """Get the helm unittests from the specified file.
-
-    Args:
-        test_file_path: Path to the YAML test file
-        include_release: Whether to include the release dictionary. Defaults to False.
-
-    Returns:
-        TestFile object containing the parsed test data
-
-    Raises:
-        FileNotFoundError: If the test file doesn't exist
-        PermissionError: If the file cannot be read due to permissions
-        yaml.YAMLError: If the file contains invalid YAML
-        KeyError: If required fields are missing from the test file
-        TypeError: If field values have incorrect types
-        ValueError: If field values are invalid
-    """
+    """Parse one helm-unittest YAML file into a TestFile."""
     # Validate input
     if not test_file_path:
         raise ValueError("test_file_path cannot be empty")

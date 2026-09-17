@@ -1,10 +1,10 @@
 import os
 import re
 import subprocess
-from utils.mcp import Server, tool
-
-
-mcp = Server().mcp
+from typing import Annotated, Optional
+from pydantic import Field
+from utils.mcp import tool
+from utils.truncate import truncate_text
 
 
 def _extract_rendered_templates_from_debug(debug_text: str) -> dict[str, str]:
@@ -43,20 +43,24 @@ def get_rendered_debug_output(
     chart_path: str,
     test_suite_files: str = "tests/*_test.yaml",
     values_path: list[str] = [],
+    templates: Annotated[
+        Optional[list[str]],
+        Field(description="Return only these template paths; null returns all of them"),
+    ] = None,
+    max_chars: Annotated[
+        int, Field(description="Per-template cap on the returned YAML")
+    ] = 20000,
+    include_raw_log: Annotated[
+        bool,
+        Field(
+            description="Also return the renderer's full debug log under __raw_debug_log__. "
+            "It restates every rendered template, so it is large."
+        ),
+    ] = False,
 ) -> dict[str, str]:
-    """Execute tests in debug mode and extract the rendered template outputs and debug logs.
+    """Render a chart through helm-unittest in debug mode and return the resulting manifests.
 
-    Useful for troubleshooting failed assertions by viewing the exact rendered
-    manifests and values resolution produced by the helm-unittest renderer.
-
-    Args:
-        chart_path (str): Path to the Helm chart
-        test_suite_files (str): Glob pattern or path for test suite files
-        values_path (list[str]): Optional list of values files to pass
-
-    Returns:
-        dict[str, str]: Dictionary mapping template paths to their rendered YAML manifests,
-                        plus a '__raw_debug_log__' key with the full debug output.
+    Use it to see what a failing assertion actually rendered.
     """
     if not os.path.exists(chart_path):
         raise FileNotFoundError(f"Chart path not found: {chart_path}")
@@ -76,19 +80,38 @@ def get_rendered_debug_output(
     combined_output = (result.stdout or "") + "\n" + (result.stderr or "")
 
     rendered = _extract_rendered_templates_from_debug(combined_output)
-    rendered["__raw_debug_log__"] = combined_output.strip()
 
-    # Also check if a .debug directory exists in chart_path
-    debug_dir = os.path.join(chart_path, ".debug")
-    if os.path.isdir(debug_dir):
-        for root, _, files in os.walk(debug_dir):
-            for file in files:
-                full_path = os.path.join(root, file)
-                rel_path = os.path.relpath(full_path, chart_path)
-                try:
-                    with open(full_path, "r", encoding="utf-8") as f:
-                        rendered[rel_path] = f.read()
-                except Exception:
-                    pass
+    if templates:
+        wanted = set(templates)
+        rendered = {
+            path: body
+            for path, body in rendered.items()
+            if path in wanted or os.path.basename(path) in wanted
+        }
 
-    return rendered
+    if include_raw_log:
+        rendered["__raw_debug_log__"] = combined_output.strip()
+
+        # The plugin may also leave rendered manifests on disk; a third copy of
+        # the same content, so it rides along with the raw log rather than alone.
+        debug_dir = os.path.join(chart_path, ".debug")
+        if os.path.isdir(debug_dir):
+            for root, _, files in os.walk(debug_dir):
+                for file in files:
+                    full_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(full_path, chart_path)
+                    try:
+                        with open(full_path, "r", encoding="utf-8") as f:
+                            rendered[rel_path] = f.read()
+                    except Exception:
+                        pass
+
+    if not rendered:
+        return {
+            "__note__": "No rendered templates found. "
+            "Re-run with include_raw_log=true to inspect the renderer output."
+        }
+
+    return {
+        path: truncate_text(body, max_chars) or "" for path, body in rendered.items()
+    }

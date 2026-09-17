@@ -96,7 +96,7 @@ class TestCaseResult:
 
 ### `TestResultSummary`
 
-Aggregate result of a `run_unittest` or `run_tests_parallel` call.
+Aggregate result of a `run_tests` call.
 
 ```python
 @dataclass

@@ -10,7 +10,8 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from tools.run_tests import run_unittest, update_snapshot
+from tools.run import run_tests
+from utils.types import OutputType
 from utils.dtos import TestResultSummary
 
 
@@ -41,13 +42,13 @@ def temp_chart(chart_path):
 
 
 class TestRunTestsIntegration:
-    """Integration tests for run_unittest and update_snapshot tools."""
+    """Integration tests for the run_tests tool."""
 
-    def test_run_unittest_all_tests(self, chart_path):
+    def test_run_tests_all_tests(self, chart_path):
         """Test running all tests in the example chart."""
         # Using default include_test_cases="failed_only"
-        result_default = run_unittest(
-            test_suite_files="tests/*/*.yaml",
+        result_default = run_tests(
+            path="tests/*/*.yaml",
             chart_path=chart_path,
             output_type="xunit",
         )
@@ -59,8 +60,8 @@ class TestRunTestsIntegration:
         assert len(result_default.test_cases) == 0
 
         # With include_test_cases="all"
-        result_all = run_unittest(
-            test_suite_files="tests/*/*.yaml",
+        result_all = run_tests(
+            path="tests/*/*.yaml",
             chart_path=chart_path,
             output_type="xunit",
             include_test_cases="all",
@@ -70,10 +71,10 @@ class TestRunTestsIntegration:
         assert "should render release-name-example deployment object" in test_names
         assert "should render release-name-example service object" in test_names
 
-    def test_run_unittest_specific_suite(self, chart_path):
+    def test_run_tests_specific_suite(self, chart_path):
         """Test running only a specific test suite."""
-        result = run_unittest(
-            test_suite_files="tests/ingress/*.yaml",
+        result = run_tests(
+            path="tests/ingress/*.yaml",
             chart_path=chart_path,
             output_type="junit",
             include_test_cases="all",
@@ -86,12 +87,12 @@ class TestRunTestsIntegration:
             == "should render release-name-example ingress object"
         )
 
-    def test_run_unittest_with_values(self, chart_path):
+    def test_run_tests_with_values(self, chart_path):
         """Test running tests with an additional values file."""
         # Note: In real scenarios, we'd have a specific test that depends on values.
         # For this integration test, we just verify that passing -v doesn't break anything.
-        result = run_unittest(
-            test_suite_files="tests/service/*.yaml",
+        result = run_tests(
+            path="tests/service/*.yaml",
             chart_path=chart_path,
             values_path=[
                 "values.yaml"
@@ -101,11 +102,12 @@ class TestRunTestsIntegration:
         assert result.total == 1
         assert result.passed == 1
 
-    def test_run_unittest_different_formats(self, chart_path):
+    def test_run_tests_different_formats(self, chart_path):
         """Test that different output formats (JUnit, NUnit) are correctly parsed."""
-        for fmt in ["junit", "nunit", "xunit"]:
-            result = run_unittest(
-                test_suite_files="tests/deployment/*.yaml",
+        formats: list[OutputType] = ["junit", "nunit", "xunit"]
+        for fmt in formats:
+            result = run_tests(
+                path="tests/deployment/*.yaml",
                 chart_path=chart_path,
                 output_type=fmt,
                 include_test_cases="all",
@@ -114,36 +116,36 @@ class TestRunTestsIntegration:
             assert len(result.test_cases) >= 1
 
     def test_update_snapshot_functionality(self, temp_chart):
-        """Test update_snapshot tool (using a temporary copy of the chart)."""
+        """Test snapshot updating (using a temporary copy of the chart)."""
         # First, ensure no snapshots exist
         snapshot_dir = Path(temp_chart) / "tests" / "deployment" / "__snapshot__"
         if snapshot_dir.exists():
             shutil.rmtree(snapshot_dir)
 
         # Run update snapshot
-        result = update_snapshot(
-            test_suite_files="tests/deployment/*.yaml", chart_path=temp_chart
+        result = run_tests(
+            path="tests/deployment/*.yaml", chart_path=temp_chart, update_snapshot=True
         )
 
         # TestResultSummary doesn't have success attr normally, but its presence means it ran
         assert result.total >= 1
 
-    def test_run_unittest_nonexistent_chart(self):
+    def test_run_tests_nonexistent_chart(self):
         """Test running tests on a nonexistent chart path."""
         # helm unittest creates an empty valid report even when chart is missing
-        result = run_unittest(
-            test_suite_files="tests/*.yaml", chart_path="/nonexistent/path"
+        result = run_tests(
+            path="tests/*.yaml", chart_path="/nonexistent/path"
         )
 
         assert isinstance(result, TestResultSummary)
         assert result.total == 0
         assert len(result.test_cases) == 0
 
-    def test_run_unittest_invalid_test_files(self, chart_path):
+    def test_run_tests_invalid_test_files(self, chart_path):
         """Test running with a glob that matches no files."""
         # helm unittest will fail if it finds no test files
-        result = run_unittest(
-            test_suite_files="nonexistent/*.yaml", chart_path=chart_path
+        result = run_tests(
+            path="nonexistent/*.yaml", chart_path=chart_path
         )
 
         # It should return a summary with 0 tests

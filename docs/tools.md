@@ -2,24 +2,67 @@
 
 All MCP tools are registered in [`src/tools/`](../src/tools/) and re-exported by [`src/tools/__init__.py`](../src/tools/__init__.py).
 
+Tools are registered through the `tool()` decorator in [`src/utils/mcp.py`](../src/utils/mcp.py) rather than
+`@mcp.tool()` directly. That decorator keeps the wire format small — see
+[Token budget](#token-budget) at the bottom of this page.
+
 ---
 
 ## Tools Summary
 
 | Tool | Module | Purpose |
 |---|---|---|
-| [`get_tests`](#get_tests) | `get_tests.py` | Recursively discover test files in a directory |
-| [`get_test_from_file`](#get_test_from_file) | `get_tests.py` | Parse a single test YAML file |
-| [`run_unittest`](#run_unittest) | `run_tests.py` | Run tests sequentially, return structured summary |
-| [`update_snapshot`](#update_snapshot) | `run_tests.py` | Run tests with snapshot update (`-u` flag) |
-| [`run_tests_parallel`](#run_tests_parallel) | `run_tests_parallel.py` | Discover + run tests in parallel, grouped by suite |
-| [`validate_schema`](#validate_schema) | `schema_validator.py` | Validate a single test file against the official JSON schema |
-| [`validate_tests`](#validate_tests) | `schema_validator.py` | Batch-validate every test file in a directory |
-| [`get_test_coverage`](#get_test_coverage) | `coverage.py` | Analyse template coverage for a Helm chart |
-| [`get_rendered_debug_output`](#get_rendered_debug_output) | `debug.py` | Run tests in debug mode and extract rendered manifests |
-| [`get_snapshots`](#get_snapshots) | `snapshots.py` | List and parse all snapshot files in a chart |
-| [`diff_snapshot`](#diff_snapshot) | `snapshots.py` | Compare stored snapshot against live rendered output |
-| [`clean_snapshots`](#clean_snapshots) | `snapshots.py` | Remove orphaned or obsolete snapshot entries |
+| [`run_tests`](#run_tests) | `run.py` | Run a chart's unit tests, sequentially or in parallel |
+| [`get_tests`](#get_tests) | `get_tests.py` | Discover test suites and the tests they define |
+| [`validate_tests`](#validate_tests) | `schema_validator.py` | Validate test files against the official JSON schema |
+| [`get_test_coverage`](#get_test_coverage) | `coverage.py` | Report which templates no test suite exercises |
+| [`get_rendered_debug_output`](#get_rendered_debug_output) | `debug.py` | Render a chart and return the resulting manifests |
+| [`get_snapshots`](#get_snapshots) | `snapshots.py` | List snapshot files and their entries |
+| [`diff_snapshot`](#diff_snapshot) | `snapshots.py` | Compare stored snapshots against a fresh render |
+| [`clean_snapshots`](#clean_snapshots) | `snapshots.py` | Remove snapshots left behind by deleted tests |
+
+---
+
+## `run_tests`
+
+```python
+run_tests(
+    chart_path: str,
+    path: str = "tests",
+    update_snapshot: bool = False,
+    values_path: list[str] = [],
+    include_test_cases: Literal["failed_only", "all", "none"] = "failed_only",
+    max_message_length: int | None = 1000,
+    max_test_cases: int = 50,
+    max_workers: int | None = None,
+    output_type: Literal["xunit", "junit", "nunit", "sonar"] = "xunit",
+    output_file: str | None = None,
+    strict: bool = False,
+    fail_fast: bool = False,
+    with_subchart: bool | None = None,
+    skip_schema_validation: bool = False,
+    chart_tests_path: str | None = None,
+) -> TestResultSummary
+```
+
+Runs a Helm chart's unit tests and summarizes the results.
+
+`path` decides how they run. A **directory** (the default `"tests"`, resolved against `chart_path`) is
+discovered, grouped by suite name, and its suite groups run in parallel through a thread pool; files within
+one suite stay sequential so their ordering guarantees hold. A **file or glob** runs sequentially.
+
+| Parameter | Notes |
+|---|---|
+| `path` | Test file, glob, or directory relative to the chart |
+| `update_snapshot` | Rewrites stored snapshots to match the current render (`-u`) |
+| `include_test_cases` | `failed_only` returns just the failures; `all` returns every case; `none` returns totals only |
+| `max_message_length` | Per-message cap, `None` disables truncation |
+| `max_test_cases` | Cap on how many cases come back; the overflow is reported as one placeholder entry |
+| `max_workers` | Thread pool size for the parallel path; `None` uses the executor default |
+| `output_file` | Persists the report instead of using a temp file |
+
+Returns a `TestResultSummary`: totals, aggregate `time`, wall-clock `elapsed_time`, and the `test_cases` that
+survived the filters.
 
 ---
 
@@ -28,155 +71,19 @@ All MCP tools are registered in [`src/tools/`](../src/tools/) and re-exported by
 ```python
 get_tests(
     dir_path: str,
-    pattern: Optional[str] = "",
+    pattern: str | None = "",
     include_release: bool = False,
-    suite_pattern: Optional[str] = None,
-    limit: Optional[int] = None,
+    suite_pattern: str | None = None,
+    limit: int | None = None,
     offset: int = 0,
 ) -> list[TestFile]
 ```
 
-Recursively walks `dir_path`, parses every matching YAML file as a `helm-unittest` test suite, and returns a list of [`TestFile`](./utils.md#testfile) objects.
+Lists the helm-unittest suites under a directory, with the name of every test they define. `dir_path` also
+accepts a single test file, in which case the list holds one entry.
 
-### Parameters
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `dir_path` | `str` | — | Root directory to scan |
-| `pattern` | `str` | `""` | Regex to filter file **names** (empty = all `.yaml`) |
-| `include_release` | `bool` | `false` | Include the `release:` block in results |
-| `suite_pattern` | `str` | `null` | Regex to filter by **suite name** |
-| `limit` | `int` | `null` | Max results to return |
-| `offset` | `int` | `0` | Skip the first N results (pagination) |
-
-### Returns
-
-`list[TestFile]` — see [TestFile DTO](./utils.md#testfile).
-
-### Notes
-
-- Uses a custom YAML loader that tolerates duplicate anchors common in `helm-unittest` files.
-- Files that fail to parse are skipped with a warning; they do not raise an error.
-
----
-
-## `get_test_from_file`
-
-```python
-get_test_from_file(
-    test_file_path: str,
-    include_release: bool = False,
-) -> TestFile
-```
-
-Parses a single `helm-unittest` YAML file and returns a [`TestFile`](./utils.md#testfile).
-
-### Parameters
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `test_file_path` | `str` | — | Absolute or relative path to the YAML test file |
-| `include_release` | `bool` | `false` | Include the `release:` block |
-
-### Raises
-
-`FileNotFoundError`, `PermissionError`, `yaml.YAMLError`, `KeyError` (missing `suite`/`tests`), `TypeError`, `ValueError`.
-
----
-
-## `run_unittest`
-
-```python
-run_unittest(
-    test_suite_files: str,
-    chart_path: str,
-    values_path: list[str] = [],
-    output_type: str = "xunit",
-    output_file: Optional[str] = None,
-    include_test_cases: str = "failed_only",
-    max_message_length: Optional[int] = 1000,
-    strict: bool = False,
-    fail_fast: bool = False,
-    with_subchart: Optional[bool] = None,
-    skip_schema_validation: bool = False,
-    chart_tests_path: Optional[str] = None,
-    debug: bool = False,
-) -> TestResultSummary
-```
-
-Runs `helm unittest` **sequentially** for the given glob pattern and returns a [`TestResultSummary`](./utils.md#testresultsummary).
-
-### Parameters
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `test_suite_files` | `str` | — | Glob pattern, e.g. `tests/*_test.yaml` |
-| `chart_path` | `str` | — | Path to the Helm chart root |
-| `values_path` | `list[str]` | `[]` | Extra `-v values.yaml` overrides |
-| `output_type` | `str` | `"xunit"` | `"xunit"`, `"junit"`, `"nunit"`, or `"sonar"` |
-| `output_file` | `str` | `null` | Persist the XML report; temp file used otherwise |
-| `include_test_cases` | `str` | `"failed_only"` | `"failed_only"`, `"all"`, or `"none"` |
-| `max_message_length` | `int` | `1000` | Truncate failure messages beyond this length |
-| `strict` | `bool` | `false` | Fail on unknown fields in test files |
-| `fail_fast` | `bool` | `false` | Stop on first failure |
-| `with_subchart` | `bool` | `null` | Include subchart tests |
-| `skip_schema_validation` | `bool` | `false` | Skip Helm values schema validation |
-| `chart_tests_path` | `str` | `null` | Custom tests directory inside the chart |
-| `debug` | `bool` | `false` | Enable `--debugPlugin` output |
-
----
-
-## `update_snapshot`
-
-Same signature as [`run_unittest`](#run_unittest). Internally passes `-u` to `helm unittest`, which regenerates all `__snapshot__/*.snap` files.
-
----
-
-## `run_tests_parallel`
-
-```python
-run_tests_parallel(
-    dir_path: str,
-    chart_path: str,
-    pattern: Optional[str] = "",
-    values_path: list[str] = [],
-    output_type: str = "xunit",
-    max_workers: Optional[int] = None,
-    include_test_cases: str = "failed_only",
-    max_message_length: Optional[int] = 1000,
-    strict: bool = False,
-    fail_fast: bool = False,
-    with_subchart: Optional[bool] = None,
-    skip_schema_validation: bool = False,
-    chart_tests_path: Optional[str] = None,
-    debug: bool = False,
-) -> TestResultSummary
-```
-
-**Recommended default** for running tests. Discovers all test files via `get_tests`, groups them by suite name, and runs each suite group concurrently using `ThreadPoolExecutor`. Tests within a single suite run sequentially.
-
-### Additional Parameters
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `dir_path` | `str` | — | Directory to scan for test files |
-| `max_workers` | `int` | `null` | Thread pool size (defaults to Python's `ThreadPoolExecutor` heuristic) |
-
-Returns an **aggregate** [`TestResultSummary`](./utils.md#testresultsummary) (`elapsed_time` reflects real wall-clock time).
-
----
-
-## `validate_schema`
-
-```python
-validate_schema(test_file_path: str) -> ValidationResult
-```
-
-Validates a single `helm-unittest` YAML file against the [official JSON schema](https://github.com/helm-unittest/helm-unittest/blob/main/schema/helm-testsuite.json). Falls back to the bundled offline schema when the network is unavailable.
-
-### Returns
-
-[`ValidationResult`](./utils.md#validationresult) with `success`, `message`, and `errors`.
+Never returns the file body — only `suite`, the `it` descriptions, `file_path`, and (with
+`include_release=True`) the suite's `release` block.
 
 ---
 
@@ -185,18 +92,20 @@ Validates a single `helm-unittest` YAML file against the [official JSON schema](
 ```python
 validate_tests(
     dir_path: str,
-    pattern: Optional[str] = "",
+    pattern: str | None = "",
     only_failures: bool = False,
-    return_summary: bool = False,
+    return_summary: bool = True,
 ) -> list[ValidationResult] | BatchValidationSummary
 ```
 
-Batch-validates every matching YAML file under `dir_path`.
+Validates test files against the official helm-unittest JSON schema. `dir_path` accepts a directory or a
+single test file.
 
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `only_failures` | `bool` | `false` | Return only files that failed validation |
-| `return_summary` | `bool` | `false` | Return a [`BatchValidationSummary`](./utils.md#batchvalidationsummary) instead of a list |
+Returns a `BatchValidationSummary` — counts plus the failures — by default. Pass `return_summary=False` for
+one `ValidationResult` per file, optionally narrowed with `only_failures=True`.
+
+The schema is fetched from the helm-unittest repository and cached, falling back to the copy bundled at
+`src/resources/schemas/helm-testsuite.json` when the network is unavailable.
 
 ---
 
@@ -206,20 +115,19 @@ Batch-validates every matching YAML file under `dir_path`.
 get_test_coverage(
     chart_path: str,
     tests_dir: str = "tests",
-    pattern: Optional[str] = "",
+    pattern: str | None = "",
     with_subcharts: bool = False,
+    untested_only: bool = True,
 ) -> CoverageReport
 ```
 
-Scans `<chart_path>/templates/` for renderable manifest files (`.yaml`, `.yml`, `.tpl`) and cross-references them with every discovered test suite to calculate coverage.
+Reports which of a chart's templates are exercised by a test suite and which are not.
 
-### Returns
+With `untested_only=True` (the default) the report carries totals, the coverage percentage, and
+`untested_template_paths`. Pass `untested_only=False` to also get `template_details`: one row per template
+with the test files and suites that target it.
 
-[`CoverageReport`](./utils.md#coveragereport) containing per-template detail and an overall `coverage_percentage`.
-
-### What counts as "covered"?
-
-A template is considered covered if it appears in at least one test suite's `templates:` list or in an individual test's `template:` field.
+Partials (`_helpers.tpl`) and `NOTES.txt` are excluded from the denominator.
 
 ---
 
@@ -230,18 +138,23 @@ get_rendered_debug_output(
     chart_path: str,
     test_suite_files: str = "tests/*_test.yaml",
     values_path: list[str] = [],
+    templates: list[str] | None = None,
+    max_chars: int = 20000,
+    include_raw_log: bool = False,
 ) -> dict[str, str]
 ```
 
-Runs `helm unittest -d` (debug mode) and returns a dictionary:
+Renders a chart through helm-unittest in debug mode (`-d`) and returns the resulting manifests, keyed by
+template path. Use it to see what a failing assertion actually rendered.
 
-- Keys are **template file paths** relative to the chart.
-- Values are the **rendered YAML** for each template.
-- A special `__raw_debug_log__` key contains the full combined stdout+stderr.
+| Parameter | Notes |
+|---|---|
+| `templates` | Return only these templates, matched on full path or basename |
+| `max_chars` | Per-template cap; the remainder is replaced with a truncation note |
+| `include_raw_log` | Also returns `__raw_debug_log__`, plus any files the plugin left in `<chart>/.debug/` |
 
-Also reads any files written to `<chart_path>/.debug/` by the plugin.
-
-Useful for troubleshooting assertion failures by inspecting the exact manifests produced by Helm.
+`include_raw_log` is off by default because the log restates every rendered template. On the bundled
+`example/` chart, turning it on takes the response from ~4 kB to ~40 kB.
 
 ---
 
@@ -250,13 +163,18 @@ Useful for troubleshooting assertion failures by inspecting the exact manifests 
 ```python
 get_snapshots(
     chart_path: str,
-    test_file_path: Optional[str] = None,
+    test_file_path: str | None = None,
+    names_only: bool = True,
+    limit: int | None = None,
+    offset: int = 0,
 ) -> list[SnapshotFile]
 ```
 
-Walks the chart directory for `__snapshot__/*.snap` files, parses them, and returns a list of [`SnapshotFile`](./utils.md#snapshotfile) objects. Each `SnapshotFile` reports whether its associated test YAML still exists (`is_orphaned`).
+Lists the `.snap` files in a chart and the entries each one stores, flagging files whose test has been
+deleted (`is_orphaned`).
 
-Pass `test_file_path` to retrieve snapshots for a **specific** test file only.
+With `names_only=True` (the default) each entry's `content` is replaced by its size (`"<1843 chars>"`).
+Stored manifests are large, so fetch them with `names_only=False` only when you need to read one.
 
 ---
 
@@ -266,38 +184,45 @@ Pass `test_file_path` to retrieve snapshots for a **specific** test file only.
 diff_snapshot(
     chart_path: str,
     test_file_path: str,
-    test_it: Optional[str] = None,
+    test_it: str | None = None,
+    max_chars: int = 20000,
 ) -> SnapshotDiffResult
 ```
 
-Compares the stored `.snap` content against the live rendered output (via `get_rendered_debug_output`) and returns a unified diff. Set `test_it` to scope the diff to a single test case.
+Compares a test file's stored snapshots against a fresh render, without touching them.
 
-### Returns
+Each snapshot entry is matched to the rendered manifest it came from, by `kind` and `metadata.name`, and
+diffed against that one manifest. Entries that cannot be matched fall back to a diff against the whole
+render and are named in `message`.
 
-[`SnapshotDiffResult`](./utils.md#snapshotdiffresult) — `has_diff`, the unified `diff` string, and a human-readable `message`.
+`test_it` narrows the comparison to entries whose name contains that text.
 
 ---
 
 ## `clean_snapshots`
 
 ```python
-clean_snapshots(
-    chart_path: str,
-    dry_run: bool = True,
-) -> SnapshotCleanResult
+clean_snapshots(chart_path: str, dry_run: bool = True) -> SnapshotCleanResult
 ```
 
-Detects and optionally removes:
+Removes snapshot files and entries left behind by deleted tests. Reports what it would remove without
+removing it unless `dry_run=False`.
 
-1. **Orphaned snapshot files** — `.snap` files whose test YAML no longer exists.
-2. **Obsolete snapshot entries** — entries within a `.snap` that no longer correspond to an active `it:` block.
-
-By default `dry_run=True` — no files are modified.
-
-### Returns
-
-[`SnapshotCleanResult`](./utils.md#snapshotcleanresult) with lists of what was (or would be) cleaned.
+Returns paths and entry keys only, never snapshot content.
 
 ---
 
-_Next: [Prompts Reference →](./prompts.md)_
+## Token budget
+
+Every tool definition is copied into the client's context on every session, and every result is copied into
+it on every call. Both are treated as a contract here:
+
+- Tools are registered with `structured_output=False`, so no `outputSchema` is advertised and results are
+  not serialized a second time as `structuredContent`.
+- Results are compact JSON, not the SDK's `indent=2` pretty-print.
+- Generated `title` keys are stripped from the input schemas.
+- The tools that can emit unbounded output (`get_rendered_debug_output`, `get_snapshots`, `diff_snapshot`,
+  `run_tests`) all cap it, and default to the cheap setting.
+
+`uv run python scripts/token_budget.py --calls` prints both numbers.
+`src/tests/test_token_budget.py` fails the build if the tool surface exceeds 8,000 characters.

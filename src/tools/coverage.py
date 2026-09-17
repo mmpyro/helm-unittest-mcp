@@ -1,7 +1,8 @@
 import os
 import re
 import yaml
-from typing import Optional
+from typing import Annotated, Optional
+from pydantic import Field
 from utils.mcp import Server, tool
 from utils.dtos import TemplateCoverage, CoverageReport
 
@@ -30,24 +31,19 @@ def _normalize_template_ref(ref: str) -> str:
 @tool(read_only=True, idempotent=True)
 def get_test_coverage(
     chart_path: str,
-    tests_dir: str = "tests",
-    pattern: Optional[str] = "",
+    tests_dir: Annotated[
+        str, Field(description="Tests directory, relative to the chart root")
+    ] = "tests",
+    pattern: Annotated[
+        Optional[str], Field(description="Regex over test suite filenames")
+    ] = "",
     with_subcharts: bool = False,
+    untested_only: Annotated[
+        bool,
+        Field(description="Return only untested_template_paths, omitting per-template detail"),
+    ] = True,
 ) -> CoverageReport:
-    """Analyze a Helm chart to determine unit test coverage across its template files.
-
-    Scans the chart's template files and cross-references them against all test suites
-    to calculate coverage percentage and identify untested templates.
-
-    Args:
-        chart_path (str): Path to the Helm chart root directory
-        tests_dir (str): Relative path from chart root to tests directory (default "tests")
-        pattern (str, optional): Regex pattern to filter test suite files
-        with_subcharts (bool): Whether to include subcharts in the coverage calculation (default False)
-
-    Returns:
-        CoverageReport: Summary of tested and untested templates with percentage coverage.
-    """
+    """Report which of a Helm chart's templates are exercised by a test suite and which are not."""
     if not os.path.exists(chart_path):
         raise FileNotFoundError(f"Chart directory not found: {chart_path}")
 
@@ -151,6 +147,9 @@ def get_test_coverage(
             tested_count += 1
         else:
             untested_paths.append(tpl)
+
+        if untested_only:
+            continue
 
         details.append(
             TemplateCoverage(

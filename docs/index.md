@@ -18,6 +18,7 @@ This server implements the [Model Context Protocol (MCP)](https://modelcontextpr
 | [Configuration & Setup](./setup.md) | Prerequisites, installation, and MCP client configuration |
 | [Development Guide](./development.md) | Running tests, linting, type-checking, and contributing |
 | [Example Chart](./example.md) | Walkthrough of the bundled sample Helm chart |
+| [Migrating to 2.0](./migration-2.0.md) | Renamed tools, changed defaults, and the new result format |
 
 ---
 

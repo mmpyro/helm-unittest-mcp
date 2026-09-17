@@ -26,10 +26,7 @@ EXAMPLE_CALLS: list[tuple[str, dict]] = [
         "get_rendered_debug_output",
         {"chart_path": "example", "test_suite_files": "tests/*/*_test.yaml"},
     ),
-    (
-        "run_tests_parallel",
-        {"dir_path": "example/tests", "chart_path": "example"},
-    ),
+    ("run_tests", {"chart_path": "example", "path": "tests"}),
 ]
 
 

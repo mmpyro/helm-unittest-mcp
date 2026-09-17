@@ -4,7 +4,7 @@ from tools.run_tests_parallel import (
     _group_tests_by_suite,
     _merge_summaries,
     _run_suite,
-    run_tests_parallel,
+    run_parallel,
 )
 from utils.dtos import TestFile, TestResultSummary, TestCaseResult
 
@@ -224,7 +224,6 @@ class TestRunSuite:
             with_subchart=None,
             skip_schema_validation=False,
             chart_tests_path=None,
-            debug=False,
         )
         mock_internal.assert_any_call(
             test_suite_files="/a/test2.yaml",
@@ -239,7 +238,6 @@ class TestRunSuite:
             with_subchart=None,
             skip_schema_validation=False,
             chart_tests_path=None,
-            debug=False,
         )
 
         assert result.total == 2
@@ -279,7 +277,6 @@ class TestRunSuite:
             with_subchart=None,
             skip_schema_validation=False,
             chart_tests_path=None,
-            debug=False,
         )
         assert result.total == 1
 
@@ -320,11 +317,10 @@ class TestRunSuite:
             with_subchart=None,
             skip_schema_validation=False,
             chart_tests_path=None,
-            debug=False,
         )
 
 
-# --- run_tests_parallel tests ---
+# --- run_parallel tests ---
 
 
 class TestRunTestsParallel:
@@ -384,7 +380,7 @@ class TestRunTestsParallel:
             ),
         ]
 
-        result = run_tests_parallel("/tests", "./chart")
+        result = run_parallel("/tests", "./chart")
 
         mock_get_tests.assert_called_once_with("/tests", "")
         assert result.total == 3
@@ -398,7 +394,7 @@ class TestRunTestsParallel:
     def test_empty_test_files(self, mock_get_tests):
         mock_get_tests.return_value = []
 
-        result = run_tests_parallel("/tests", "./chart")
+        result = run_parallel("/tests", "./chart")
 
         assert result.total == 0
         assert result.passed == 0
@@ -420,7 +416,7 @@ class TestRunTestsParallel:
             test_cases=[TestCaseResult(name="t1", suite="S", result="Pass", time=0.1)],
         )
 
-        run_tests_parallel("/tests", "./chart", pattern=".*special.*")
+        run_parallel("/tests", "./chart", pattern=".*special.*")
 
         mock_get_tests.assert_called_once_with("/tests", ".*special.*")
 
@@ -446,7 +442,7 @@ class TestRunTestsParallel:
             Exception("Helm crashed"),
         ]
 
-        result = run_tests_parallel("/tests", "./chart")
+        result = run_parallel("/tests", "./chart")
 
         assert result.total == 2
         assert result.passed == 1
@@ -489,7 +485,7 @@ class TestRunTestsParallel:
             ),
         ]
 
-        result = run_tests_parallel("/tests", "./chart")
+        result = run_parallel("/tests", "./chart")
 
         assert result.total == 2
         assert result.passed == 2
@@ -511,7 +507,7 @@ class TestRunTestsParallel:
             test_cases=[TestCaseResult(name="t1", suite="S", result="Pass", time=0.1)],
         )
 
-        run_tests_parallel(
+        run_parallel(
             "/tests",
             "./chart",
             values_path=["v1.yaml", "v2.yaml"],
@@ -531,7 +527,6 @@ class TestRunTestsParallel:
             with_subchart=None,
             skip_schema_validation=False,
             chart_tests_path=None,
-            debug=False,
         )
 
     @patch("tools.run_tests_parallel.get_tests")
@@ -552,7 +547,7 @@ class TestRunTestsParallel:
             test_cases=[],
         )
 
-        run_tests_parallel(
+        run_parallel(
             "/tests",
             "./chart",
             include_test_cases="all",
@@ -572,7 +567,6 @@ class TestRunTestsParallel:
             with_subchart=None,
             skip_schema_validation=False,
             chart_tests_path=None,
-            debug=False,
         )
 
     @patch("tools.run_tests_parallel.get_tests")
@@ -593,7 +587,7 @@ class TestRunTestsParallel:
             test_cases=[],
         )
 
-        run_tests_parallel(
+        run_parallel(
             "/tests",
             "./chart",
             strict=True,
@@ -601,7 +595,6 @@ class TestRunTestsParallel:
             with_subchart=False,
             skip_schema_validation=True,
             chart_tests_path="custom_tests",
-            debug=True,
         )
 
         mock_internal.assert_called_once_with(
@@ -617,5 +610,4 @@ class TestRunTestsParallel:
             with_subchart=False,
             skip_schema_validation=True,
             chart_tests_path="custom_tests",
-            debug=True,
         )

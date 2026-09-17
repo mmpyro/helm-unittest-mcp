@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from tools.run_tests import run_unittest, update_snapshot, _run_unittest_internal
+from tools.run_tests import _run_unittest_internal
 from utils.dtos import TestResultSummary
 
 
@@ -90,72 +90,6 @@ def test_run_unittest_with_provided_file(mock_run, mock_parser_class):
         pass
 
 
-@patch("tools.run_tests._run_unittest_internal")
-def test_run_unittest_tool(mock_internal):
-    run_unittest(
-        "files",
-        "path",
-        ["v1"],
-        "junit",
-        "out",
-        strict=True,
-        fail_fast=True,
-        with_subchart=False,
-        skip_schema_validation=True,
-        chart_tests_path="custom_tests",
-        debug=True,
-    )
-    mock_internal.assert_called_once_with(
-        "files",
-        "path",
-        ["v1"],
-        "junit",
-        "out",
-        update_snapshot=False,
-        include_test_cases="failed_only",
-        max_message_length=1000,
-        strict=True,
-        fail_fast=True,
-        with_subchart=False,
-        skip_schema_validation=True,
-        chart_tests_path="custom_tests",
-        debug=True,
-    )
-
-
-@patch("tools.run_tests._run_unittest_internal")
-def test_update_snapshot_tool(mock_internal):
-    update_snapshot(
-        "files",
-        "path",
-        ["v1"],
-        "junit",
-        "out",
-        strict=True,
-        fail_fast=True,
-        with_subchart=True,
-        skip_schema_validation=True,
-        chart_tests_path="custom_tests",
-        debug=True,
-    )
-    mock_internal.assert_called_once_with(
-        "files",
-        "path",
-        ["v1"],
-        "junit",
-        "out",
-        update_snapshot=True,
-        include_test_cases="failed_only",
-        max_message_length=1000,
-        strict=True,
-        fail_fast=True,
-        with_subchart=True,
-        skip_schema_validation=True,
-        chart_tests_path="custom_tests",
-        debug=True,
-    )
-
-
 @patch("tools.run_tests.TestResultParser")
 @patch("tools.run_tests.subprocess.run")
 @patch("tools.run_tests.tempfile.mkstemp")
@@ -181,7 +115,6 @@ def test_run_unittest_all_flags_command_generation(
         with_subchart=False,
         skip_schema_validation=True,
         chart_tests_path="custom_tests",
-        debug=True,
     )
 
     args, _ = mock_run.call_args
@@ -192,7 +125,6 @@ def test_run_unittest_all_flags_command_generation(
     assert "--skip-schema-validation" in cmd
     assert "--chart-tests-path" in cmd
     assert cmd[cmd.index("--chart-tests-path") + 1] == "custom_tests"
-    assert "--debugPlugin" in cmd
 
 
 @patch("tools.run_tests.TestResultParser")

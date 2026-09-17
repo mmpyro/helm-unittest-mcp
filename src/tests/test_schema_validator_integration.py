@@ -9,7 +9,7 @@ import pytest
 import os
 from pathlib import Path
 from tools.schema_validator import validate_schema, validate_tests
-from utils.dtos import ValidationResult
+from utils.dtos import ValidationResult, BatchValidationSummary
 
 
 # Mark all tests in this module with the integration tag
@@ -91,7 +91,7 @@ class TestSchemaValidatorIntegration:
 
     def test_validate_tests_recursive(self, example_dir):
         """Test recursive validation of all example test files."""
-        results = validate_tests(example_dir)
+        results = validate_tests(example_dir, return_summary=False)
 
         # We expect 5 files to be validated (one in each subdirectory)
         assert isinstance(results, list)
@@ -106,7 +106,9 @@ class TestSchemaValidatorIntegration:
     def test_validate_tests_with_pattern(self, example_dir):
         """Test recursive validation with a pattern."""
         # Only match deployment tests
-        results = validate_tests(example_dir, pattern=r".*deployment.*\.yaml$")
+        results = validate_tests(
+            example_dir, pattern=r".*deployment.*\.yaml$", return_summary=False
+        )
 
         assert isinstance(results, list)
         assert len(results) == 1
@@ -124,7 +126,9 @@ class TestSchemaValidatorIntegration:
         assert summary.invalid_files == 0
         assert len(summary.failures) == 0
 
-        only_failures = validate_tests(example_dir, only_failures=True)
+        only_failures = validate_tests(
+            example_dir, only_failures=True, return_summary=False
+        )
         assert isinstance(only_failures, list)
         assert len(only_failures) == 0
 
@@ -172,7 +176,9 @@ class TestSchemaValidatorEdgeCases:
         with pytest.raises(FileNotFoundError):
             validate_tests("/nonexistent/directory")
 
-    def test_validate_tests_not_a_directory(self, deployment_test_path):
-        """Test that validate_tests raises NotADirectoryError when path is a file."""
-        with pytest.raises(NotADirectoryError):
-            validate_tests(deployment_test_path)
+    def test_validate_tests_accepts_a_single_file(self, deployment_test_path):
+        """A file path validates just that file rather than raising."""
+        summary = validate_tests(deployment_test_path)
+        assert isinstance(summary, BatchValidationSummary)
+        assert summary.total_files == 1
+        assert summary.valid_files == 1
