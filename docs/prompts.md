@@ -100,7 +100,7 @@ Instructs the LLM to **run all unit tests** for a Helm chart and present a clear
 4. List each failed test case with suite name and (truncated) error message.
 5. Offer to investigate failures.
 
-> A directory `path` runs suites in parallel; pass a file or glob to run one suite sequentially.
+> A directory `path` runs suites with `helm unittest --parallel`; pass a file or glob to run one suite sequentially.
 
 ### Parameters
 

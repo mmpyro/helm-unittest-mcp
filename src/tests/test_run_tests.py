@@ -129,6 +129,49 @@ def test_run_unittest_all_flags_command_generation(
 
 @patch("tools.run_tests.TestResultParser")
 @patch("tools.run_tests.subprocess.run")
+def test_run_unittest_parallel_with_multiple_files(mock_run, mock_parser_class):
+    _run_unittest_internal(
+        test_suite_files=["tests/a_test.yaml", "tests/b_test.yaml"],
+        chart_path="./chart",
+        output_file="report.xml",
+        parallel=True,
+        max_workers=3,
+    )
+
+    cmd = mock_run.call_args.args[0]
+    assert cmd[:6] == [
+        "helm", "unittest", "-f", "tests/a_test.yaml", "-f", "tests/b_test.yaml"
+    ]
+    assert "--parallel" in cmd
+    assert cmd[cmd.index("--max-workers") + 1] == "3"
+
+
+@patch("tools.run_tests.TestResultParser")
+@patch("tools.run_tests.subprocess.run")
+def test_run_unittest_parallel_without_max_workers(mock_run, mock_parser_class):
+    _run_unittest_internal(
+        "tests/*.yaml", "./chart", output_file="report.xml", parallel=True
+    )
+
+    cmd = mock_run.call_args.args[0]
+    assert "--parallel" in cmd
+    assert "--max-workers" not in cmd
+
+
+@patch("tools.run_tests.TestResultParser")
+@patch("tools.run_tests.subprocess.run")
+def test_run_unittest_max_workers_ignored_when_sequential(mock_run, mock_parser_class):
+    _run_unittest_internal(
+        "tests/*.yaml", "./chart", output_file="report.xml", max_workers=3
+    )
+
+    cmd = mock_run.call_args.args[0]
+    assert "--parallel" not in cmd
+    assert "--max-workers" not in cmd
+
+
+@patch("tools.run_tests.TestResultParser")
+@patch("tools.run_tests.subprocess.run")
 @patch("tools.run_tests.os.close")
 @patch("tools.run_tests.os.path.exists")
 @patch("tools.run_tests.os.remove")

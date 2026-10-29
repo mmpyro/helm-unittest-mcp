@@ -6,8 +6,8 @@ from pydantic import Field
 from utils.mcp import tool
 from utils.dtos import TestResultSummary
 from utils.types import IncludeCases, OutputType
-from tools.run_tests import _run_unittest_internal
-from tools.run_tests_parallel import run_parallel
+from tools.get_tests import get_tests
+from tools.run_tests import _chart_relative, _run_unittest_internal
 
 
 @tool()
@@ -17,7 +17,7 @@ def run_tests(
         str,
         Field(
             description="Test file, glob, or directory relative to the chart. "
-            "A directory is discovered and its suites run in parallel."
+            "A directory is discovered and its suites run with helm unittest --parallel."
         ),
     ] = "tests",
     update_snapshot: Annotated[
@@ -31,7 +31,10 @@ def run_tests(
     max_test_cases: Annotated[
         int, Field(description="Cap on how many test cases come back")
     ] = 50,
-    max_workers: Optional[int] = None,
+    max_workers: Annotated[
+        Optional[int],
+        Field(description="--max-workers for directory runs; null means one per CPU core"),
+    ] = None,
     output_type: OutputType = "xunit",
     output_file: Annotated[
         Optional[str], Field(description="Persist the report here instead of a temp file")
@@ -48,26 +51,20 @@ def run_tests(
     """
     resolved = path if os.path.isdir(path) else os.path.join(chart_path, path)
 
-    if os.path.isdir(resolved):
-        return run_parallel(
-            dir_path=resolved,
-            chart_path=chart_path,
-            values_path=values_path,
-            output_type=output_type,
-            max_workers=max_workers,
-            update_snapshot=update_snapshot,
-            include_test_cases=include_test_cases,
-            max_message_length=max_message_length,
-            max_test_cases=max_test_cases,
-            strict=strict,
-            fail_fast=fail_fast,
-            with_subchart=with_subchart,
-            skip_schema_validation=skip_schema_validation,
-            chart_tests_path=chart_tests_path,
-        )
+    test_suite_files: str | list[str] = path
+    parallel = os.path.isdir(resolved)
+    if parallel:
+        test_suite_files = [
+            _chart_relative(t.file_path, chart_path) for t in get_tests(resolved)
+        ]
+        # With no -f, helm unittest would fall back to its own tests/*_test.yaml default.
+        if not test_suite_files:
+            return TestResultSummary(
+                total=0, passed=0, failed=0, skipped=0, errors=0, time=0.0, test_cases=[]
+            )
 
     return _run_unittest_internal(
-        test_suite_files=path,
+        test_suite_files=test_suite_files,
         chart_path=chart_path,
         values_path=values_path,
         output_type=output_type,
@@ -81,4 +78,6 @@ def run_tests(
         with_subchart=with_subchart,
         skip_schema_validation=skip_schema_validation,
         chart_tests_path=chart_tests_path,
+        parallel=parallel,
+        max_workers=max_workers,
     )

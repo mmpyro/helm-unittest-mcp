@@ -8,8 +8,17 @@ from utils.dtos import TestResultSummary
 from utils.truncate import filter_test_cases
 
 
+def _chart_relative(test_path: str, chart_path: str) -> str:
+    """Express a test path relative to the chart, keeping paths outside the chart as-is."""
+    try:
+        rel_path = os.path.relpath(os.path.abspath(test_path), os.path.abspath(chart_path))
+    except ValueError:
+        return test_path
+    return test_path if rel_path.startswith("..") else rel_path
+
+
 def _run_unittest_internal(
-    test_suite_files: str,
+    test_suite_files: str | list[str],
     chart_path: str,
     values_path: list[str] = [],
     output_type: str = "xunit",
@@ -23,8 +32,12 @@ def _run_unittest_internal(
     with_subchart: Optional[bool] = None,
     skip_schema_validation: bool = False,
     chart_tests_path: Optional[str] = None,
+    parallel: bool = False,
+    max_workers: Optional[int] = None,
 ) -> TestResultSummary:
     start_time = time.perf_counter()
+    if isinstance(test_suite_files, str):
+        test_suite_files = [test_suite_files]
     is_temp = False
     if not output_file:
         # Create a temporary file to store the XML report
@@ -32,11 +45,10 @@ def _run_unittest_internal(
         os.close(fd)
         is_temp = True
 
-    cmd = [
-        "helm",
-        "unittest",
-        "-f",
-        test_suite_files,
+    cmd = ["helm", "unittest"]
+    for f in test_suite_files:
+        cmd.extend(["-f", f])
+    cmd += [
         chart_path,
         "-t",
         output_type,
@@ -60,6 +72,11 @@ def _run_unittest_internal(
 
     if chart_tests_path:
         cmd.extend(["--chart-tests-path", chart_tests_path])
+
+    if parallel:
+        cmd.append("--parallel")
+        if max_workers is not None:
+            cmd.extend(["--max-workers", str(max_workers)])
 
     for v in values_path:
         cmd.append("-v")
