@@ -8,7 +8,7 @@ own rule.
 
 from typing import Optional
 
-from utils.dtos import TestCaseResult, TestResultSummary
+from utils.dtos import TestCaseResult
 
 
 def truncate_text(text: Optional[str], max_chars: Optional[int]) -> Optional[str]:
@@ -52,16 +52,3 @@ def filter_test_cases(
             )
         )
     return kept
-
-
-def cap_test_cases(
-    summary: TestResultSummary, max_test_cases: Optional[int]
-) -> TestResultSummary:
-    """Cap an already-merged summary's ``test_cases`` list in place."""
-    summary.test_cases = filter_test_cases(
-        summary.test_cases,
-        include_test_cases="all",
-        max_message_length=None,
-        max_test_cases=max_test_cases,
-    )
-    return summary

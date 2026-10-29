@@ -31,6 +31,8 @@ choco install kubernetes-helm  # Windows
 
 ### 4. `helm-unittest` plugin
 
+Version 1.2.0 or newer is required (directory runs use its `--parallel` flag).
+
 ```bash
 helm plugin install https://github.com/helm-unittest/helm-unittest.git
 ```

@@ -108,10 +108,10 @@ class TestResultSummary:
     errors: int
     time: float                      # Sum of individual suite times
     test_cases: list[TestCaseResult] # Filtered list (see include_test_cases)
-    elapsed_time: Optional[float] = None  # Wall-clock time (parallel runner only)
+    elapsed_time: Optional[float] = None  # Wall-clock time of the helm unittest run
 ```
 
-> **Note**: `time` is the sum of all suite times and may exceed `elapsed_time` when running in parallel.
+> **Note**: `time` is the sum of all suite times and may exceed `elapsed_time` for directory runs, which use `--parallel`.
 
 ---
 

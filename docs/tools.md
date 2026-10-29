@@ -48,8 +48,9 @@ run_tests(
 Runs a Helm chart's unit tests and summarizes the results.
 
 `path` decides how they run. A **directory** (the default `"tests"`, resolved against `chart_path`) is
-discovered, grouped by suite name, and its suite groups run in parallel through a thread pool; files within
-one suite stay sequential so their ordering guarantees hold. A **file or glob** runs sequentially.
+discovered and every test file is passed to a single `helm unittest --parallel` call; helm-unittest keeps
+suites that share a snapshot file sequential. A **file or glob** runs sequentially. Requires helm-unittest
+1.2.0 or newer.
 
 | Parameter | Notes |
 |---|---|
@@ -58,7 +59,7 @@ one suite stay sequential so their ordering guarantees hold. A **file or glob** 
 | `include_test_cases` | `failed_only` returns just the failures; `all` returns every case; `none` returns totals only |
 | `max_message_length` | Per-message cap, `None` disables truncation |
 | `max_test_cases` | Cap on how many cases come back; the overflow is reported as one placeholder entry |
-| `max_workers` | Thread pool size for the parallel path; `None` uses the executor default |
+| `max_workers` | `--max-workers` for directory runs; `None` lets helm-unittest use one worker per CPU core |
 | `output_file` | Persists the report instead of using a temp file |
 
 Returns a `TestResultSummary`: totals, aggregate `time`, wall-clock `elapsed_time`, and the `test_cases` that

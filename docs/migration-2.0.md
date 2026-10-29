@@ -24,12 +24,14 @@ Measured against the bundled `example/` chart:
 | `get_test_from_file(test_file_path)` | `get_tests(dir_path=<a file>)` — returns a one-element list |
 | `validate_schema(test_file_path)` | `validate_tests(dir_path=<a file>)` |
 
-`run_tests` picks its execution path from `path`: a directory is discovered and its suites run in parallel,
-a file or glob runs sequentially. `path` defaults to `"tests"` and is resolved against `chart_path`.
+`run_tests` picks its execution path from `path`: a directory is discovered and its suites run with
+helm-unittest's native `--parallel` flag (helm-unittest 1.2.0 or newer), a file or glob runs sequentially.
+`path` defaults to `"tests"` and is resolved against `chart_path`.
 
 The removed names remain importable as plain Python functions (`tools.run_tests._run_unittest_internal`,
-`tools.run_tests_parallel.run_parallel`, `tools.get_tests.get_test_from_file`,
-`tools.schema_validator.validate_schema`); they are simply no longer registered as MCP tools.
+`tools.get_tests.get_test_from_file`, `tools.schema_validator.validate_schema`); they are simply no longer
+registered as MCP tools. The Python thread-pool runner `tools.run_tests_parallel.run_parallel` has been
+removed in favour of `--parallel`.
 
 ## Changed defaults
 
@@ -48,7 +50,7 @@ Each has an explicit opt-out: pass `include_raw_log=True`, `names_only=False`, `
 
 - `debug` on the test-running tools. It appended `--debugPlugin`, whose output was captured and discarded,
   so the flag never had an observable effect. Use `get_rendered_debug_output` instead.
-- `output_file` is still available on `run_tests`, but the parallel path ignores it.
+- `output_file` is still available on `run_tests`, and is honoured for directory runs too.
 
 ## Result format
 

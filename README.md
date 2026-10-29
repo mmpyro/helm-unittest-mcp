@@ -9,7 +9,7 @@ This is a Model Context Protocol (MCP) server that provides tools for running an
 - **Test Discovery**: Recursively find all YAML test suites in a directory.
 - **Schema Validation**: Validate test files against the official `helm-unittest` JSON schema.
 - **Test Execution**: Run tests using the `helm unittest` CLI and receive structured results (JUnit/xUnit/NUnit/Sonar formats).
-- **Parallel Execution**: `run_tests` groups suites and runs them concurrently for faster feedback.
+- **Parallel Execution**: directory runs use helm-unittest's native `--parallel` flag for faster feedback.
 - **Snapshot Management**: Create, diff, update, and clean snapshot files.
 - **Coverage Reporting**: Analyse template coverage across a Helm chart.
 - **Debug Output**: Inspect rendered manifests to troubleshoot failing assertions.
@@ -57,7 +57,7 @@ This project uses `uv` for dependency management. See [Development Commands](#de
 [Helm](https://helm.sh/docs/intro/install/) must be installed on your system.
 
 ### 3. Helm Unittest Plugin
-The `helm-unittest` plugin must be installed in Helm:
+The `helm-unittest` plugin (1.2.0 or newer) must be installed in Helm:
 ```bash
 helm plugin install https://github.com/helm-unittest/helm-unittest.git
 ```

@@ -71,6 +71,27 @@ class TestRunTestsIntegration:
         assert "should render release-name-example deployment object" in test_names
         assert "should render release-name-example service object" in test_names
 
+    def test_run_tests_directory_runs_natively_in_parallel(self, chart_path):
+        """A directory path runs every discovered suite in one --parallel invocation."""
+        result = run_tests(
+            path="tests",
+            chart_path=chart_path,
+            include_test_cases="all",
+            max_workers=2,
+        )
+
+        assert result.total == 6
+        assert result.passed == 6
+        assert len(result.test_cases) == 6
+
+    def test_run_tests_directory_writes_output_file(self, chart_path, tmp_path):
+        """output_file is honoured for directory runs."""
+        report = tmp_path / "report.xml"
+        result = run_tests(path="tests", chart_path=chart_path, output_file=str(report))
+
+        assert result.total == 6
+        assert report.exists()
+
     def test_run_tests_specific_suite(self, chart_path):
         """Test running only a specific test suite."""
         result = run_tests(

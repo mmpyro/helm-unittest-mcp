@@ -131,7 +131,8 @@ def run_helm_tests(
 **Available Tools:**
 1. `run_tests(chart_path, path, update_snapshot=False, values_path, include_test_cases="failed_only", \
 max_message_length=1000, max_test_cases=50, max_workers=None, output_type="xunit")` - \
-Runs Helm unittests. A directory `path` is discovered and its suites run in parallel; a file or glob `path` runs \
+Runs Helm unittests. A directory `path` is discovered and its suites run with `helm unittest --parallel` \
+(`max_workers` maps to `--max-workers`); a file or glob `path` runs \
 sequentially. By default only failed test cases are returned (`include_test_cases="failed_only"`), capped at \
 `max_test_cases`.
 

@@ -42,10 +42,9 @@ src/
 ├── server.py              # Entry point – starts the MCP stdio server
 ├── tools/                 # MCP tool implementations
 │   ├── __init__.py        # Re-exports every public tool symbol
-│   ├── run.py             # run_tests (routes to the sequential or parallel path)
+│   ├── run.py             # run_tests (directory → --parallel, file/glob → sequential)
 │   ├── get_tests.py       # get_tests
-│   ├── run_tests.py       # _run_unittest_internal (sequential)
-│   ├── run_tests_parallel.py  # run_parallel, suite grouping and merging
+│   ├── run_tests.py       # _run_unittest_internal (builds and runs the helm unittest command)
 │   ├── schema_validator.py    # validate_tests
 │   ├── coverage.py        # get_test_coverage
 │   ├── debug.py           # get_rendered_debug_output
@@ -74,7 +73,7 @@ src/
 | Decision | Rationale |
 |---|---|
 | **Singleton MCP server** | All modules import the same `Server()` instance so decorators land on one `FastMCP` app. |
-| **Parallel test runner** | Tests are grouped by suite and run with `ThreadPoolExecutor`; within a suite they run sequentially to preserve ordering. |
+| **Native parallel runner** | Directory runs pass every discovered file to one `helm unittest --parallel` call (helm-unittest 1.2.0+). The plugin groups suites that share a `.snap` file, so snapshot writes never race, and keeps output in discovery order. |
 | **Offline schema fallback** | `schema_validator.py` tries to fetch the official schema from GitHub; on failure it falls back to the bundled `helm-testsuite.json`. |
 | **Temporary XML files** | `run_tests` writes output to a `tempfile` and cleans it up after parsing so no artefacts are left on disk. |
 | **Duplicate-anchor YAML loader** | `get_tests.py` ships a custom `SafeLoader` that silently overwrites duplicate anchors — a pattern common in `helm-unittest` files. |
@@ -85,18 +84,13 @@ src/
 
 ```
 run_tests(chart_path, path)
-  └─ path is a directory → run_parallel()
-       └─ get_tests(dir_path)       → list[TestFile]
-       └─ _group_tests_by_suite()   → dict[suite → [TestFile]]
-            └─ ThreadPoolExecutor
-                 └─ _run_suite()
-                      └─ _run_unittest_internal()
-                           ├─ subprocess: helm unittest -f … -t xunit -o /tmp/…
-                           └─ TestResultParser.parse(/tmp/…) → TestResultSummary
-       └─ _merge_summaries()        → TestResultSummary (aggregate)
-       └─ cap_test_cases()          → capped at max_test_cases
+  └─ path is a directory
+       └─ get_tests(dir_path)       → list[TestFile] (none found → empty summary, helm not run)
+       └─ _run_unittest_internal(files, parallel=True)
+            ├─ subprocess: helm unittest -f a -f b … --parallel [--max-workers N] -t xunit -o /tmp/…
+            └─ TestResultParser.parse(/tmp/…) → TestResultSummary, capped at max_test_cases
 
-  └─ path is a file or glob → _run_unittest_internal() directly
+  └─ path is a file or glob → _run_unittest_internal(path) without --parallel
 ```
 
 ---
